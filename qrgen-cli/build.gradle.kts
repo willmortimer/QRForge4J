@@ -3,7 +3,7 @@ plugins {
     application
 }
 
-group = "io.github.qrgen"
+group = "io.github.willmortimer"
 version = "1.0.0"
 
 dependencies {
@@ -21,7 +21,7 @@ java {
 }
 
 application {
-    mainClass.set("io.github.qrgen.cli.QrGenCliKt")
+    mainClass.set("io.github.willmortimer.cli.QrGenCliKt")
 }
 
 tasks.test {

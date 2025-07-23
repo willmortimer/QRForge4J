@@ -22,7 +22,7 @@ tasks.dokkaHtmlMultiModule.configure {
 }
 
 allprojects {
-    group = "io.github.qrgen"
+    group = "io.github.willmortimer"
     version = "1.0.0"
     
     repositories {

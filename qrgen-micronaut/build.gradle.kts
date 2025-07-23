@@ -4,7 +4,7 @@ plugins {
     id("maven-publish")
 }
 
-group = "io.github.qrgen"
+group = "io.github.willmortimer"
 version = "1.0.0"
 
 dependencies {
@@ -51,7 +51,7 @@ publishing {
             pom {
                 name.set("QRGen Micronaut Integration")
                 description.set("Micronaut integration for QRGen library")
-                url.set("https://github.com/qrgen-kotlin/qrgen")
+                url.set("https://github.com/willmortimer/QRForge4J")
                 
                 licenses {
                     license {
@@ -64,14 +64,14 @@ publishing {
                     developer {
                         id.set("qrgen-team")
                         name.set("QRGen Team")
-                        email.set("team@qrgen.io")
+                        email.set("contact@willmortimer.dev")
                     }
                 }
                 
                 scm {
-                    connection.set("scm:git:git://github.com/qrgen-kotlin/qrgen.git")
+                    connection.set("scm:git:git://github.com/willmortimer/QRForge4J.git")
                     developerConnection.set("scm:git:ssh://github.com:qrgen-kotlin/qrgen.git")
-                    url.set("https://github.com/qrgen-kotlin/qrgen/tree/main")
+                    url.set("https://github.com/willmortimer/QRForge4J/tree/main")
                 }
             }
         }

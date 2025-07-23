@@ -13,7 +13,7 @@ plugins {
     id("org.gradle.toolchains.foojay-resolver-convention") version "0.4.0"
 }
 
-rootProject.name = "qrgen"
+rootProject.name = "qrforge4j"
 include("qrgen-core")
 include("qrgen-svg") 
 include("qrgen-png")
@@ -22,6 +22,5 @@ include("qrgen-test")
 include("qrgen-cli")
 include("qrgen-spring-boot-starter")
 include("qrgen-batch")
-// Temporarily disabled due to dependency issues
-// include("qrgen-gradle-plugin")
-// include("qrgen-micronaut")
+// include("qrgen-gradle-plugin")  // TODO: Fix Kotlin version compatibility  
+// include("qrgen-micronaut")     // TODO: Fix API compatibility issues

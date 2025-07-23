@@ -4,7 +4,7 @@ import io.github.qrgen.core.*
 import io.micronaut.http.HttpResponse
 import io.micronaut.http.MediaType
 import io.micronaut.http.annotation.*
-import io.micronaut.serde.annotation.Serdeable
+import io.micronaut.core.annotation.Introspected
 import kotlinx.coroutines.runBlocking
 
 /**
@@ -118,7 +118,7 @@ class QrController(private val qrGenService: QrGenService) {
 /**
  * Request model for QR generation
  */
-@Serdeable
+@Introspected
 data class QrRequest(
     val data: String,
     val format: String = "SVG",
@@ -133,7 +133,7 @@ data class QrRequest(
 /**
  * Request model for batch QR generation
  */
-@Serdeable
+@Introspected
 data class BatchRequest(
     val dataList: List<String>,
     val format: String = "SVG",

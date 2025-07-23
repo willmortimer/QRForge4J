@@ -40,18 +40,23 @@ abstract class QrGenTask : DefaultTask() {
     
     private fun generateSingleQr(config: QrCodeConfig, outputDir: File) {
         val qrStyleConfig = buildQrStyleConfig(config)
-        val format = QrFormat.valueOf(config.format.uppercase())
+        val format = config.format.uppercase()
         
         val result = when (format) {
-            QrFormat.SVG -> {
+            "SVG" -> {
                 val renderer = SvgRenderer()
                 val svg = renderer.render(config.data, qrStyleConfig)
                 QrResult(svg.toByteArray(), "image/svg+xml", "${config.filename}.svg")
             }
-            QrFormat.PNG -> {
+            "PNG" -> {
                 val renderer = PngRenderer()
                 val png = renderer.render(config.data, qrStyleConfig)
                 QrResult(png, "image/png", "${config.filename}.png")
+            }
+            else -> {
+                val renderer = SvgRenderer()
+                val svg = renderer.render(config.data, qrStyleConfig)
+                QrResult(svg.toByteArray(), "image/svg+xml", "${config.filename}.svg")
             }
         }
         

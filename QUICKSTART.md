@@ -19,17 +19,17 @@ dependencies {
 ```xml
 <dependencies>
     <dependency>
-        <groupId>io.github.qrgen</groupId>
+        <groupId>io.github.willmortimer</groupId>
         <artifactId>qrgen-dsl</artifactId>
         <version>1.0.0</version>
     </dependency>
     <dependency>
-        <groupId>io.github.qrgen</groupId>
+        <groupId>io.github.willmortimer</groupId>
         <artifactId>qrgen-svg</artifactId>
         <version>1.0.0</version>
     </dependency>
     <dependency>
-        <groupId>io.github.qrgen</groupId>
+        <groupId>io.github.willmortimer</groupId>
         <artifactId>qrgen-png</artifactId>
         <version>1.0.0</version>
     </dependency>

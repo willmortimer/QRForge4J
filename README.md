@@ -1,23 +1,28 @@
-# QRGen - Advanced QR Code Generation Library
+# QRForge4J - Advanced QR Code Generation Library
 
 🎯 **The definitive QR code styling library for the JVM ecosystem**
 
 A powerful, modular QR code generation library written in Kotlin that provides:
+
 - **Full feature parity** with the popular JavaScript qr-code-styling library
 - **8 advanced visual features** that go beyond the original
-- **Beautiful Kotlin DSL** for type-safe QR generation  
+- **Beautiful Kotlin DSL** for type-safe QR generation
 - **Modular architecture** (core, SVG renderer, DSL, CLI)
 - **High-quality SVG output** with extensive styling options
+
+**Repository**: [github.com/willmortimer/QRForge4J](https://github.com/willmortimer/QRForge4J)
 
 ## Features
 
 ### 🏗️ Modular Architecture
+
 - **qrgen-core**: Core QR generation engine with type-safe configuration
 - **qrgen-svg**: Advanced SVG renderer with all styling features
 - **qrgen-dsl**: Beautiful Kotlin DSL for fluent API design
 - **qrgen-cli**: Comprehensive command-line interface
 
 ### 🎨 Complete Styling System
+
 - **6 Module Styles**: Circle, square, classy rings, rounded, extra-rounded, classy-rounded
 - **4 Corner Locator Styles**: Square, circle, rounded, classy variants
 - **Logo Support**: Center images with size control and hole carving
@@ -25,6 +30,7 @@ A powerful, modular QR code generation library written in Kotlin that provides:
 - **Colors**: Full color customization with transparency support
 
 ### 🚀 Advanced Features (Beyond qr-code-styling)
+
 - **Module Outlines**: Subtle contrasting strokes around modules
 - **Quiet Zone Accents**: Decorative borders around the quiet zone
 - **Drop Shadows**: SVG filter-based soft shadows and glows
@@ -33,6 +39,7 @@ A powerful, modular QR code generation library written in Kotlin that provides:
 - **Micro Typography**: Text rendering on circular or linear paths
 
 ### 💎 Beautiful Kotlin DSL
+
 ```kotlin
 val qrSvg = QRCode.ofCircles()
     .size(600)
@@ -44,6 +51,7 @@ val qrSvg = QRCode.ofCircles()
 ```
 
 ### 🖥️ Comprehensive CLI
+
 - **Multiple Encodings**: UTF-8, Latin-1, Base64 input support
 - **Flexible I/O**: File or stdin/stdout with proper error handling
 - **All Features Available**: Every styling option accessible via command-line
@@ -51,10 +59,12 @@ val qrSvg = QRCode.ofCircles()
 ## Installation
 
 ### Prerequisites
+
 - Java 21 or higher
 - Gradle (included via wrapper)
 
 ### Build from Source
+
 ```bash
 git clone <repository-url>
 cd qr-generator
@@ -66,11 +76,13 @@ cd qr-generator
 ### Basic Examples
 
 Generate a simple QR code:
+
 ```bash
 echo "Hello World" | ./gradlew run --args="--enc latin1" > qr.svg
 ```
 
 From file input:
+
 ```bash
 ./gradlew run --args="--input data.txt --enc latin1 --output qr.svg"
 ```
@@ -78,6 +90,7 @@ From file input:
 ### Styling Options
 
 #### Different Module Styles
+
 ```bash
 # Circular dots (default)
 echo "https://example.com" | ./gradlew run --args="--enc latin1 --dots circle" > circular.svg
@@ -93,6 +106,7 @@ echo "https://example.com" | ./gradlew run --args="--enc latin1 --dots classy" >
 ```
 
 #### Custom Colors
+
 ```bash
 # Blue QR code on white background
 echo "Styled QR" | ./gradlew run --args="--enc latin1 --fg #0066cc --bg #ffffff" > blue.svg
@@ -105,6 +119,7 @@ echo "Transparent" | ./gradlew run --args="--enc latin1 --bg ''" > transparent.s
 ```
 
 #### Size and Layout
+
 ```bash
 # Large QR code
 echo "Big QR" | ./gradlew run --args="--enc latin1 --width 1024 --height 1024" > large.svg
@@ -117,6 +132,7 @@ echo "Circle" | ./gradlew run --args="--enc latin1 --circle" > circle.svg
 ```
 
 #### Logo Integration
+
 ```bash
 # With logo and hole
 echo "Company" | ./gradlew run --args="--enc latin1 --logo logo.png --hole 40" > branded.svg
@@ -126,6 +142,7 @@ echo "Brand" | ./gradlew run --args="--enc latin1 --logo logo.svg --logo-size 0.
 ```
 
 #### Corner Locator Styling
+
 ```bash
 # Rounded corner locators
 echo "Rounded" | ./gradlew run --args="--enc latin1 --corner-style rounded --corner-color #ff6b35" > corners.svg
@@ -168,6 +185,7 @@ Options:
 ## Architecture
 
 ### Design Principles
+
 - **Clean Separation**: Rendering logic separated from CLI interface
 - **Extensible**: Easy to add new module shapes and styling options
 - **Performance**: Optimized SVG generation with efficient path batching
@@ -176,7 +194,9 @@ Options:
 ### Core Components
 
 #### `QrRenderer.kt`
+
 The heart of the styling engine featuring:
+
 - **Module Rendering**: Circle, square, and classy ring styles
 - **Path Optimization**: Batched rectangle rendering for performance
 - **Gradient Support**: Infrastructure for linear and radial gradients
@@ -184,7 +204,9 @@ The heart of the styling engine featuring:
 - **Layout Engine**: Precise positioning with configurable margins
 
 #### `App.kt`
+
 Command-line interface providing:
+
 - **Flexible Input**: File or stdin with encoding options
 - **Comprehensive Options**: Full access to all rendering capabilities
 - **Pipeline Friendly**: Easy integration with shell scripts and automation
@@ -192,12 +214,15 @@ Command-line interface providing:
 ### Technical Highlights
 
 #### Smart Path Batching
+
 For square modules, consecutive modules in the same row are batched into single rectangle paths, significantly reducing SVG file size and improving rendering performance.
 
 #### Precision Positioning
+
 All coordinates use double precision and smart formatting that omits decimals when possible, creating clean, compact SVG output.
 
 #### Modular Design
+
 The rendering system is designed for easy extension - adding new module shapes or styling options requires minimal changes to core logic.
 
 ## Comparison with qr-code-styling Library
@@ -205,42 +230,48 @@ The rendering system is designed for easy extension - adding new module shapes o
 This project was inspired by the excellent [qr-code-styling](https://github.com/kozakdenys/qr-code-styling) JavaScript library. Here's how we compare:
 
 ### Current Feature Parity
+
 ✅ **Module Styles**: Circle, square, classy (rounded squares planned)  
 ✅ **Color Control**: Foreground/background colors  
 ✅ **Logo Integration**: Center images with hole carving  
 ✅ **Corner Styling**: Custom finder pattern appearance  
 ✅ **Size Control**: Flexible dimensions and margins  
-✅ **Error Correction**: Full ECC level support  
+✅ **Error Correction**: Full ECC level support
 
 ### JavaScript Library Features To Implement
+
 🔄 **Gradients**: Linear and radial gradient support (infrastructure ready)  
 🔄 **Rounded Squares**: Module corner radius control  
 🔄 **Advanced Corners**: More corner dot and square style variations  
 🔄 **Background Rounds**: Rounded background corners  
-🔄 **Canvas Output**: PNG/JPEG generation (SVG-first approach)  
+🔄 **Canvas Output**: PNG/JPEG generation (SVG-first approach)
 
 ### Kotlin-Specific Advantages
+
 🚀 **Pure SVG**: Vector-first approach for infinite scalability  
 🚀 **CLI Integration**: Perfect for server-side generation and automation  
 🚀 **Performance**: JVM performance for high-throughput scenarios  
 🚀 **Type Safety**: Compile-time validation of parameters  
-🚀 **Path Optimization**: Intelligent SVG path batching  
+🚀 **Path Optimization**: Intelligent SVG path batching
 
 ## Roadmap
 
 ### Phase 1: Core Styling Completion
+
 - [ ] **Linear Gradients**: Implement gradient fills for modules
 - [ ] **Radial Gradients**: Circular gradient patterns
 - [ ] **Rounded Squares**: Module corner radius control
 - [ ] **Advanced Corners**: Extended corner dot/square variations
 
-### Phase 2: Advanced Features  
+### Phase 2: Advanced Features
+
 - [ ] **Animation Support**: SVG animations for dynamic QR codes
 - [ ] **Pattern Fills**: Texture and pattern module fills
 - [ ] **Multi-format Output**: PNG/JPEG generation via SVG conversion
 - [ ] **Batch Processing**: Multiple QR generation in single command
 
 ### Phase 3: Developer Experience
+
 - [ ] **Library Mode**: Programmatic API for Kotlin/Java projects
 - [ ] **Configuration Files**: JSON/YAML styling presets
 - [ ] **Interactive CLI**: Guided styling mode
@@ -259,12 +290,15 @@ This project welcomes contributions! Areas where help is especially appreciated:
 ## Technical Details
 
 ### Dependencies
+
 - **Nayuki QR Code Generator** (`io.nayuki:qrcodegen:1.8.0`): Core QR generation
 - **Kotlin Standard Library**: Language runtime
 - **Java 21**: Modern JVM platform
 
 ### Output Format
+
 Generated SVGs use:
+
 - **Viewport**: Precise coordinate system
 - **Shape Rendering**: `crispEdges` for pixel-perfect output
 - **Optimized Paths**: Minimal file size with batched rectangles
@@ -278,4 +312,4 @@ MIT License - see LICENSE file for details.
 
 - **[Nayuki](https://github.com/nayuki)**: Exceptional QR Code generator library
 - **[qr-code-styling](https://github.com/kozakdenys/qr-code-styling)**: Inspiration and feature reference
-- **QR Code Specification**: Built according to ISO/IEC 18004 standard 
+- **QR Code Specification**: Built according to ISO/IEC 18004 standard

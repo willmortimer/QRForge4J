@@ -1,11 +1,11 @@
-# QRGen Repository Structure
+# QRForge4J Repository Structure
 
-This document provides a comprehensive overview of the QRGen library repository structure.
+This document provides a comprehensive overview of the QRForge4J library repository structure.
 
 ## 📂 Repository Overview
 
 ```
-qrgen/
+QRForge4J/
 ├── 📁 qrgen-core/           # Core QR generation engine
 ├── 📁 qrgen-svg/            # SVG rendering with advanced styling
 ├── 📁 qrgen-png/            # High-quality PNG rendering
@@ -30,7 +30,9 @@ qrgen/
 ### Core Modules
 
 #### qrgen-core
+
 **Purpose**: Foundation module with core QR generation logic
+
 - **Package**: `io.github.qrgen.core`
 - **Key Classes**:
   - `QrStyleConfig` - Main configuration class
@@ -40,7 +42,9 @@ qrgen/
 - **Dependencies**: `io.nayuki:qrcodegen`
 
 #### qrgen-svg
+
 **Purpose**: Advanced SVG rendering with rich styling capabilities
+
 - **Package**: `io.github.qrgen.svg`
 - **Key Classes**:
   - `SvgRenderer` - Main SVG generation engine
@@ -48,14 +52,18 @@ qrgen/
 - **Dependencies**: `qrgen-core`
 
 #### qrgen-png
+
 **Purpose**: High-quality PNG rendering using Apache Batik
+
 - **Package**: `io.github.qrgen.png`
 - **Key Classes**:
   - `PngRenderer` - PNG generation with configurable DPI
 - **Dependencies**: `qrgen-core`, `qrgen-svg`, Apache Batik
 
 #### qrgen-dsl
+
 **Purpose**: Kotlin DSL for elegant, fluent API usage
+
 - **Package**: `io.github.qrgen.dsl`
 - **Key Classes**:
   - `QrCodeBuilder` - Fluent builder API
@@ -65,7 +73,9 @@ qrgen/
 ### Utility Modules
 
 #### qrgen-test
+
 **Purpose**: Testing utilities and QR code verification
+
 - **Package**: `io.github.qrgen.test`
 - **Key Classes**:
   - `QrVerification` - ZXing-based verification
@@ -74,7 +84,9 @@ qrgen/
 - **Dependencies**: `qrgen-core`, ZXing
 
 #### qrgen-batch
+
 **Purpose**: Efficient batch processing with coroutines
+
 - **Package**: `io.github.qrgen.batch`
 - **Key Classes**:
   - `BatchProcessor` - Parallel QR generation
@@ -83,7 +95,9 @@ qrgen/
 - **Dependencies**: `qrgen-core`, `qrgen-svg`, `qrgen-png`, Kotlin Coroutines
 
 #### qrgen-cli
+
 **Purpose**: Modern command-line interface
+
 - **Package**: `io.github.qrgen.cli`
 - **Key Classes**:
   - `QrGenCli` - Main CLI application
@@ -92,7 +106,9 @@ qrgen/
 ### Framework Integration Modules
 
 #### qrgen-spring-boot-starter
+
 **Purpose**: Complete Spring Boot integration
+
 - **Package**: `io.github.qrgen.spring`
 - **Key Classes**:
   - `QrGenAutoConfiguration` - Auto-configuration
@@ -102,7 +118,9 @@ qrgen/
 - **Dependencies**: Spring Boot, `qrgen-batch`, `qrgen-png`
 
 #### qrgen-micronaut
+
 **Purpose**: Micronaut framework integration
+
 - **Package**: `io.github.qrgen.micronaut`
 - **Key Classes**:
   - `QrGenService` - Micronaut service
@@ -110,7 +128,9 @@ qrgen/
 - **Dependencies**: Micronaut, `qrgen-batch`, `qrgen-png`
 
 #### qrgen-gradle-plugin
+
 **Purpose**: Gradle plugin for build-time QR generation
+
 - **Package**: `io.github.qrgen.gradle`
 - **Key Classes**:
   - `QrGenPlugin` - Main plugin class
@@ -121,6 +141,7 @@ qrgen/
 ## 🎯 Usage Patterns
 
 ### 1. Direct API Usage
+
 ```kotlin
 // Core usage
 val config = QrStyleConfig(...)
@@ -129,6 +150,7 @@ val svg = renderer.render("Hello World", config)
 ```
 
 ### 2. DSL Usage (Recommended)
+
 ```kotlin
 // Fluent DSL
 val qrSvg = QRCode.ofCircles()
@@ -139,11 +161,13 @@ val qrSvg = QRCode.ofCircles()
 ```
 
 ### 3. CLI Usage
+
 ```bash
 ./gradlew qrgen-cli:run --args="--data 'Hello World' --output hello.svg"
 ```
 
 ### 4. Framework Integration
+
 ```kotlin
 // Spring Boot
 @RestController
@@ -154,6 +178,7 @@ class MyController(private val qrGenService: QrGenService) {
 ```
 
 ### 5. Build-time Generation
+
 ```kotlin
 // Gradle plugin
 qrgen {
@@ -170,9 +195,10 @@ qrgen {
 ## 🏛️ Package Structure
 
 All modules follow consistent package naming:
+
 - **Root**: `io.github.qrgen`
 - **Module-specific**: `io.github.qrgen.{module}`
-- **Examples**: 
+- **Examples**:
   - `io.github.qrgen.core`
   - `io.github.qrgen.svg`
   - `io.github.qrgen.dsl`
@@ -181,13 +207,15 @@ All modules follow consistent package naming:
 ## 📦 Distribution
 
 ### Maven Coordinates
+
 ```xml
-<groupId>io.github.qrgen</groupId>
+<groupId>io.github.willmortimer</groupId>
 <artifactId>qrgen-{module}</artifactId>
 <version>1.0.0</version>
 ```
 
 ### Available Repositories
+
 - **Maven Central** (primary)
 - **GitHub Packages** (releases)
 - **Local Maven** (development)
@@ -195,12 +223,14 @@ All modules follow consistent package naming:
 ## 🔧 Build System
 
 ### Gradle Multi-Module Setup
+
 - **Root**: Configuration and task orchestration
 - **Modules**: Independent build configurations
 - **Publishing**: Unified publishing to multiple repositories
 - **Documentation**: Kotlin Dokka integration
 
 ### Key Gradle Tasks
+
 ```bash
 ./gradlew build              # Build all modules
 ./gradlew publishAllToMavenLocal  # Publish to local repository
@@ -211,6 +241,7 @@ All modules follow consistent package naming:
 ## 🧪 Testing Strategy
 
 ### Test Coverage by Module
+
 - **qrgen-test**: Comprehensive verification utilities
 - **Integration Tests**: Framework-specific testing
 - **Performance Tests**: Benchmarking and optimization
@@ -219,6 +250,7 @@ All modules follow consistent package naming:
 ## 📋 Dependencies
 
 ### External Dependencies
+
 - **Core QR Generation**: `io.nayuki:qrcodegen`
 - **PNG Rendering**: Apache Batik suite
 - **Testing**: ZXing, JUnit 5
@@ -227,6 +259,7 @@ All modules follow consistent package naming:
 - **Build Tools**: Gradle, Kotlin Dokka
 
 ### Internal Dependencies
+
 ```
 qrgen-core (foundation)
 ├── qrgen-svg (extends core)
@@ -243,6 +276,7 @@ qrgen-core (foundation)
 ## 🎨 Features by Module
 
 ### Advanced Features (8 beyond original JS library)
+
 1. **Module outlines** (qrgen-svg)
 2. **Quiet zone accents** (qrgen-svg)
 3. **Drop shadows** (qrgen-svg)
@@ -253,6 +287,7 @@ qrgen-core (foundation)
 8. **Corner locator logos** (qrgen-svg)
 
 ### Enterprise Features
+
 - **Batch processing** with coroutines (qrgen-batch)
 - **Performance monitoring** (qrgen-test)
 - **Framework integrations** (qrgen-spring-boot-starter, qrgen-micronaut)
@@ -270,4 +305,4 @@ qrgen-core (foundation)
 
 ---
 
-*This structure represents a complete, production-ready library ecosystem that surpasses the original JavaScript library in features, performance, and developer experience.* 
+_This structure represents a complete, production-ready library ecosystem that surpasses the original JavaScript library in features, performance, and developer experience._

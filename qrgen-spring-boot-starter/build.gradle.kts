@@ -4,7 +4,7 @@ plugins {
     `maven-publish`
 }
 
-group = "io.github.qrgen"
+group = "io.github.willmortimer"
 version = "1.0.0"
 
 val springBootVersion = "3.2.0"
