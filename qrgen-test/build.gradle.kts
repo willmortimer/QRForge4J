@@ -10,6 +10,8 @@ version = "1.0.0"
 dependencies {
     api(project(":qrgen-core"))
     api(project(":qrgen-svg"))
+    api(project(":qrgen-png"))
+    api(project(":qrgen-pdf"))
     api(project(":qrgen-dsl"))
     
     // ZXing for QR code scanning/verification
@@ -25,7 +27,7 @@ dependencies {
 
 java {
     toolchain {
-        languageVersion.set(JavaLanguageVersion.of(21))
+        languageVersion.set(JavaLanguageVersion.of(17))
     }
     withSourcesJar()
     withJavadocJar()
@@ -54,4 +56,18 @@ publishing {
 
 tasks.test {
     useJUnitPlatform()
-} 
+}
+
+tasks.register<JavaExec>("runBenchmarks") {
+    group = "verification"
+    description = "Run QRGen benchmark scenarios and write reports"
+    classpath = sourceSets["main"].runtimeClasspath
+    mainClass.set("io.github.qrgen.test.QrBenchmarkRunnerKt")
+}
+
+tasks.register<JavaExec>("generateGoldens") {
+    group = "verification"
+    description = "Generate normalized SVG and raster smoke goldens under build/generated-goldens"
+    classpath = sourceSets["main"].runtimeClasspath
+    mainClass.set("io.github.qrgen.test.QrGoldenGeneratorKt")
+}

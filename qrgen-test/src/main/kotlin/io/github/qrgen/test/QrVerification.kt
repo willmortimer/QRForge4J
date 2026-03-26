@@ -1,21 +1,54 @@
 package io.github.qrgen.test
 
-import com.google.zxing.*
+import com.google.zxing.BinaryBitmap
+import com.google.zxing.DecodeHintType
+import com.google.zxing.MultiFormatReader
+import com.google.zxing.NotFoundException
+import com.google.zxing.Result
+import com.google.zxing.ResultMetadataType
 import com.google.zxing.client.j2se.BufferedImageLuminanceSource
+import com.google.zxing.common.GlobalHistogramBinarizer
 import com.google.zxing.common.HybridBinarizer
-import com.google.zxing.qrcode.QRCodeReader
 import com.google.zxing.qrcode.decoder.ErrorCorrectionLevel
-import io.github.qrgen.core.*
-import io.github.qrgen.dsl.*
+import io.github.qrgen.core.AdvancedOptions
+import io.github.qrgen.core.AlignmentPatternOptions
+import io.github.qrgen.core.AlignmentPatternShape
+import io.github.qrgen.core.AnimationOptions
+import io.github.qrgen.core.AnimationPreset
+import io.github.qrgen.core.BackgroundPattern
+import io.github.qrgen.core.ColorOptions
+import io.github.qrgen.core.DefaultQrGenerator
+import io.github.qrgen.core.DotType
+import io.github.qrgen.core.LayoutOptions
+import io.github.qrgen.core.LocatorCornerStyle
+import io.github.qrgen.core.LocatorDotShape
+import io.github.qrgen.core.LocatorFrameShape
+import io.github.qrgen.core.LocatorLogoOptions
+import io.github.qrgen.core.LocatorOptions
+import io.github.qrgen.core.ModuleOptions
+import io.github.qrgen.core.PatternType
+import io.github.qrgen.core.QrResult
+import io.github.qrgen.core.QrOptions
+import io.github.qrgen.core.QrStyleConfig
+import io.github.qrgen.dsl.QRCode
+import io.github.qrgen.dsl.QrCodeBuilder
+import io.github.qrgen.pdf.QrPdfRenderer
+import io.github.qrgen.png.BatikPngRenderer
+import io.github.qrgen.png.PngRenderConfig
 import io.github.qrgen.svg.DefaultSvgRenderer
-import org.w3c.dom.Document
-import java.awt.Color
+import io.nayuki.qrcodegen.QrCode
+import org.apache.batik.transcoder.image.PNGTranscoder
+import org.apache.pdfbox.Loader
+import org.apache.pdfbox.rendering.PDFRenderer
 import java.awt.image.BufferedImage
+import java.awt.image.RescaleOp
 import java.io.ByteArrayInputStream
+import java.io.File
 import javax.imageio.ImageIO
-import javax.xml.parsers.DocumentBuilderFactory
 import kotlin.time.Duration
 import kotlin.time.measureTime
+
+enum class VerificationFormat { SVG, PNG, JPEG, PDF }
 
 /** QR code verification result **/
 data class QrVerificationResult(
@@ -25,7 +58,8 @@ data class QrVerificationResult(
     val errorCorrection: ErrorCorrectionLevel? = null,
     val version: Int? = null,
     val scanDuration: Duration? = null,
-    val errorMessage: String? = null
+    val errorMessage: String? = null,
+    val format: VerificationFormat = VerificationFormat.SVG
 ) {
     val contentMatches: Boolean get() = decodedContent == expectedContent
 }
@@ -39,300 +73,295 @@ data class QrPerformanceMetrics(
     val isScannableByZXing: Boolean = false
 )
 
+data class StyledVerificationCase(
+    val name: String,
+    val data: String,
+    val config: QrStyleConfig
+)
+
 /** ZXing-based QR code verification utilities **/
-class QrVerifier {
-    private val reader = QRCodeReader()
-    
-    /**
-     * Verify that a QR code configuration produces a scannable result
-     */
-    fun verify(data: String, config: QrStyleConfig): QrVerificationResult {
+class QrVerifier(
+    private val generator: DefaultQrGenerator = DefaultQrGenerator(),
+    private val svgRenderer: DefaultSvgRenderer = DefaultSvgRenderer(),
+    private val pngRenderer: BatikPngRenderer = BatikPngRenderer(),
+    private val pdfRenderer: QrPdfRenderer = QrPdfRenderer()
+) {
+    private val decodeHints = mapOf(
+        DecodeHintType.TRY_HARDER to true
+    )
+    private val reader = MultiFormatReader()
+
+    fun verify(data: String, config: QrStyleConfig, format: VerificationFormat = VerificationFormat.SVG): QrVerificationResult {
         return try {
-            // Generate QR code
-            val generator = DefaultQrGenerator()
             val qrResult = generator.generateFromText(data, config)
-            
-            // Render to SVG
-            val renderer = DefaultSvgRenderer()
-            val svg = renderer.render(qrResult)
-            
-            // Convert SVG to BufferedImage for ZXing
-            val image = svgToBufferedImage(svg, config.layout.width, config.layout.height)
-            
-            // Scan with ZXing
+            val image = renderToBufferedImage(qrResult, format)
+            lateinit var result: Result
             val scanDuration = measureTime {
-                val result = scanQrCode(image)
-                return QrVerificationResult(
-                    isSuccessful = true,
-                    decodedContent = result.text,
-                    expectedContent = data,
-                    errorCorrection = result.resultMetadata?.get(ResultMetadataType.ERROR_CORRECTION_LEVEL) as? ErrorCorrectionLevel
-                )
+                result = scanQrCode(image)
             }
-            
-            QrVerificationResult(isSuccessful = false, errorMessage = "Scan completed but no result returned")
+            QrVerificationResult(
+                isSuccessful = true,
+                decodedContent = result.text,
+                expectedContent = data,
+                errorCorrection = result.resultMetadata[ResultMetadataType.ERROR_CORRECTION_LEVEL] as? ErrorCorrectionLevel,
+                version = qrResult.qrCode.version,
+                scanDuration = scanDuration,
+                format = format
+            )
         } catch (e: Exception) {
             QrVerificationResult(
                 isSuccessful = false,
                 expectedContent = data,
-                errorMessage = e.message
+                errorMessage = e.message ?: e::class.simpleName,
+                format = format
             )
         }
     }
-    
-    /**
-     * Verify using the DSL builder
-     */
+
+    fun verifyAcrossFormats(data: String, config: QrStyleConfig): Map<VerificationFormat, QrVerificationResult> {
+        return VerificationFormat.entries.associateWith { verify(data, config, it) }
+    }
+
     fun verify(data: String, builderBlock: QrCodeBuilder.() -> Unit): QrVerificationResult {
         val builder = QRCode.custom()
         builder.builderBlock()
-        
-        return try {
-            val svg = builder.buildSvg(data)
-            val qrResult = builder.build(data)
-            val image = svgToBufferedImage(svg, qrResult.config.layout.width, qrResult.config.layout.height)
-            
-            val scanDuration = measureTime {
-                val result = scanQrCode(image)
-                return QrVerificationResult(
-                    isSuccessful = true,
-                    decodedContent = result.text,
-                    expectedContent = data,
-                    errorCorrection = result.resultMetadata?.get(ResultMetadataType.ERROR_CORRECTION_LEVEL) as? ErrorCorrectionLevel
-                )
-            }
-            
-            QrVerificationResult(isSuccessful = false, errorMessage = "Scan completed but no result returned")
-        } catch (e: Exception) {
-            QrVerificationResult(
-                isSuccessful = false,
-                expectedContent = data,
-                errorMessage = e.message
-            )
-        }
+        return verify(data, builder.build(data).config)
     }
-    
-    /**
-     * Performance testing for QR generation
-     */
+
     fun measurePerformance(data: String, config: QrStyleConfig): QrPerformanceMetrics {
-        var svg: String
-        var qrResult: QrResult
-        
+        lateinit var qrResult: QrResult
+        lateinit var svg: String
+
         val generationTime = measureTime {
-            val generator = DefaultQrGenerator()
             qrResult = generator.generateFromText(data, config)
         }
-        
         val renderingTime = measureTime {
-            val renderer = DefaultSvgRenderer()
-            svg = renderer.render(qrResult)
+            svg = svgRenderer.render(qrResult)
         }
-        
         val scanTime = measureTime {
-            try {
-                val image = svgToBufferedImage(svg, config.layout.width, config.layout.height)
-                scanQrCode(image)
-            } catch (e: Exception) {
-                // Scan failed
-            }
+            scanQrCode(renderSvgToBufferedImage(svg))
         }
-        
+
         return QrPerformanceMetrics(
             generationTime = generationTime,
             svgSize = svg.length,
             renderingTime = renderingTime,
             scanTime = scanTime,
-            isScannableByZXing = try {
-                val image = svgToBufferedImage(svg, config.layout.width, config.layout.height)
-                scanQrCode(image)
-                true
-            } catch (e: Exception) {
-                false
-            }
+            isScannableByZXing = runCatching { scanQrCode(renderSvgToBufferedImage(svg)) }.isSuccess
         )
     }
-    
-    /**
-     * Batch verification of multiple QR codes
-     */
-    fun verifyBatch(testCases: List<Pair<String, QrStyleConfig>>): List<QrVerificationResult> {
-        return testCases.map { (data, config) ->
-            verify(data, config)
+
+    fun verifyBatch(testCases: List<Pair<String, QrStyleConfig>>, format: VerificationFormat = VerificationFormat.SVG): List<QrVerificationResult> {
+        return testCases.map { (data, config) -> verify(data, config, format) }
+    }
+
+    fun testStylingCompatibility(data: String): Map<String, Map<VerificationFormat, QrVerificationResult>> {
+        return QrStyledCases.defaultCases(data).associate { it.name to verifyAcrossFormats(it.data, it.config) }
+    }
+
+    fun renderToBufferedImage(qrResult: QrResult, format: VerificationFormat): BufferedImage {
+        return when (format) {
+            VerificationFormat.SVG -> renderSvgToBufferedImage(svgRenderer.render(qrResult))
+            VerificationFormat.PNG -> decodeImage(pngRenderer.render(qrResult))
+            VerificationFormat.JPEG -> decodeImage(pngRenderer.renderJpeg(qrResult))
+            VerificationFormat.PDF -> renderPdfFirstPage(pdfRenderer.render(qrResult))
         }
     }
-    
-    /**
-     * Test different styling options don't break scannability
-     */
-    fun testStylingCompatibility(data: String): Map<String, QrVerificationResult> {
-        val testConfigs = mapOf(
-            "default" to QrStyleConfig(),
-            "circles" to QrStyleConfig(modules = ModuleOptions(type = DotType.CIRCLE)),
-            "squares" to QrStyleConfig(modules = ModuleOptions(type = DotType.SQUARE)),
-            "classy" to QrStyleConfig(modules = ModuleOptions(type = DotType.CLASSY)),
-            "rounded" to QrStyleConfig(modules = ModuleOptions(type = DotType.ROUNDED)),
-            "extra-rounded" to QrStyleConfig(modules = ModuleOptions(type = DotType.EXTRA_ROUNDED)),
-            "with-logo" to QrStyleConfig(logo = LogoOptions(holeRadiusPx = 30.0)),
-            "with-drop-shadow" to QrStyleConfig(advanced = AdvancedOptions(dropShadow = DropShadow(enabled = true))),
-            "with-outline" to QrStyleConfig(advanced = AdvancedOptions(moduleOutline = ModuleOutline(enabled = true)))
+
+    fun renderSvgToBufferedImage(svg: String): BufferedImage {
+        val png = PNGTranscoder()
+        png.addTranscodingHint(PNGTranscoder.KEY_WIDTH, 2048f)
+        png.addTranscodingHint(PNGTranscoder.KEY_HEIGHT, 2048f)
+        val output = java.io.ByteArrayOutputStream()
+        png.transcode(
+            org.apache.batik.transcoder.TranscoderInput(svg.reader()),
+            org.apache.batik.transcoder.TranscoderOutput(output)
         )
-        
-        return testConfigs.mapValues { (_, config) ->
-            verify(data, config)
+        return decodeImage(output.toByteArray())
+    }
+
+    private fun renderPdfFirstPage(pdfBytes: ByteArray): BufferedImage {
+        Loader.loadPDF(pdfBytes).use { document ->
+            return PDFRenderer(document).renderImageWithDPI(0, 300f)
         }
     }
-    
+
+    private fun decodeImage(bytes: ByteArray): BufferedImage {
+        return ImageIO.read(ByteArrayInputStream(bytes))
+            ?: error("Unable to decode rendered image")
+    }
+
     private fun scanQrCode(image: BufferedImage): Result {
-        val source = BufferedImageLuminanceSource(image)
-        val bitmap = BinaryBitmap(HybridBinarizer(source))
-        return reader.decode(bitmap)
-    }
-    
-    private fun svgToBufferedImage(svg: String, width: Int, height: Int): BufferedImage {
-        // For now, create a simple black/white representation
-        // In a real implementation, you'd use a proper SVG renderer like Batik
-        val image = BufferedImage(width, height, BufferedImage.TYPE_INT_RGB)
-        val g2d = image.createGraphics()
-        
-        // Fill with white background
-        g2d.color = Color.WHITE
-        g2d.fillRect(0, 0, width, height)
-        
-        // Parse SVG and draw basic elements
-        try {
-            val factory = DocumentBuilderFactory.newInstance()
-            val builder = factory.newDocumentBuilder()
-            val doc = builder.parse(ByteArrayInputStream(svg.toByteArray()))
-            
-            // Simple parsing for circles and rectangles
-            parseSvgElements(doc, g2d)
-        } catch (e: Exception) {
-            // Fallback: just draw a test pattern
-            g2d.color = Color.BLACK
-            g2d.fillRect(50, 50, width - 100, height - 100)
-        }
-        
-        g2d.dispose()
-        return image
-    }
-    
-    private fun parseSvgElements(doc: Document, g2d: java.awt.Graphics2D) {
-        g2d.color = Color.BLACK
-        
-        // Parse circles
-        val circles = doc.getElementsByTagName("circle")
-        for (i in 0 until circles.length) {
-            val circle = circles.item(i)
-            val attrs = circle.attributes
-            val cx = attrs.getNamedItem("cx")?.nodeValue?.toDoubleOrNull() ?: 0.0
-            val cy = attrs.getNamedItem("cy")?.nodeValue?.toDoubleOrNull() ?: 0.0
-            val r = attrs.getNamedItem("r")?.nodeValue?.toDoubleOrNull() ?: 0.0
-            
-            g2d.fillOval((cx - r).toInt(), (cy - r).toInt(), (2 * r).toInt(), (2 * r).toInt())
-        }
-        
-        // Parse rectangles
-        val rects = doc.getElementsByTagName("rect")
-        for (i in 0 until rects.length) {
-            val rect = rects.item(i)
-            val attrs = rect.attributes
-            val x = attrs.getNamedItem("x")?.nodeValue?.toDoubleOrNull() ?: 0.0
-            val y = attrs.getNamedItem("y")?.nodeValue?.toDoubleOrNull() ?: 0.0
-            val width = attrs.getNamedItem("width")?.nodeValue?.toDoubleOrNull() ?: 0.0
-            val height = attrs.getNamedItem("height")?.nodeValue?.toDoubleOrNull() ?: 0.0
-            val fill = attrs.getNamedItem("fill")?.nodeValue
-            
-            if (fill != "none" && !fill.isNullOrEmpty()) {
-                g2d.fillRect(x.toInt(), y.toInt(), width.toInt(), height.toInt())
-            }
-        }
-        
-        // Parse paths (for batched squares)
-        val paths = doc.getElementsByTagName("path")
-        for (i in 0 until paths.length) {
-            val path = paths.item(i)
-            val attrs = path.attributes
-            val d = attrs.getNamedItem("d")?.nodeValue
-            
-            // Simple path parsing for rectangles (M x,y h w v h h-w z pattern)
-            d?.let { pathData ->
-                parseSimplePath(pathData, g2d)
-            }
-        }
-    }
-    
-    private fun parseSimplePath(pathData: String, g2d: java.awt.Graphics2D) {
-        // Very basic path parsing for rectangle patterns
-        val commands = pathData.split("(?=[MmHhVvZz])".toRegex())
-        
-        var currentX = 0.0
-        var currentY = 0.0
-        
-        for (command in commands) {
-            if (command.trim().isEmpty()) continue
-            
-            when (command.trim().first()) {
-                'M' -> {
-                    val coords = command.substring(1).split(",")
-                    if (coords.size >= 2) {
-                        currentX = coords[0].trim().toDoubleOrNull() ?: 0.0
-                        currentY = coords[1].trim().toDoubleOrNull() ?: 0.0
-                    }
-                }
-                'h' -> {
-                    val width = command.substring(1).trim().toDoubleOrNull() ?: 0.0
-                    // Assume this is part of a rectangle pattern
-                    // Look for following v and h commands to complete rectangle
-                    g2d.fillRect(currentX.toInt(), currentY.toInt(), width.toInt(), width.toInt())
+        val candidates = listOf(
+            compositeOnWhite(image),
+            increaseContrast(compositeOnWhite(image))
+        )
+
+        val failures = mutableListOf<Throwable>()
+        for (candidate in candidates) {
+            val source = BufferedImageLuminanceSource(candidate)
+            val bitmaps = listOf(
+                BinaryBitmap(HybridBinarizer(source)),
+                BinaryBitmap(GlobalHistogramBinarizer(source))
+            )
+            for (bitmap in bitmaps) {
+                try {
+                    reader.reset()
+                    return reader.decode(bitmap, decodeHints)
+                } catch (t: Throwable) {
+                    failures += t
                 }
             }
         }
+
+        throw failures.lastOrNull() ?: NotFoundException.getNotFoundInstance()
+    }
+
+    private fun compositeOnWhite(image: BufferedImage): BufferedImage {
+        val composited = BufferedImage(image.width, image.height, BufferedImage.TYPE_INT_RGB)
+        val graphics = composited.createGraphics()
+        graphics.color = java.awt.Color.WHITE
+        graphics.fillRect(0, 0, image.width, image.height)
+        graphics.drawImage(image, 0, 0, null)
+        graphics.dispose()
+        return composited
+    }
+
+    private fun increaseContrast(image: BufferedImage): BufferedImage {
+        val contrasted = BufferedImage(image.width, image.height, BufferedImage.TYPE_INT_RGB)
+        RescaleOp(1.15f, -8f, null).filter(image, contrasted)
+        return contrasted
+    }
+}
+
+/** Shared styled cases used by scannability, golden, and benchmark tests. */
+object QrStyledCases {
+    private const val INLINE_LOGO = "data:image/svg+xml;base64," +
+        "PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHZpZXdCb3g9JzAgMCAyNCAyNCc+" +
+        "PHJlY3Qgd2lkdGg9JzI0JyBoZWlnaHQ9JzI0JyByeD0nNicgZmlsbD0nIzAwMDAwMCcvPjxwYXRoIGQ9" +
+        "J002IDEyaDEyJyBzdHJva2U9JyNmZmZmZmYnIHN0cm9rZS13aWR0aD0nMycgc3Ryb2tlLWxpbmVjYXA9" +
+        "J3JvdW5kJy8+PHBhdGggZD0nTTEyIDZ2MTInIHN0cm9rZT0nI2ZmZmZmZicgc3Ryb2tlLXdpZHRoPScz" +
+        "JyBzdHJva2UtbGluZWNhcD0ncm91bmQnLz48L3N2Zz4="
+
+    private fun safeBaseConfig(): QrStyleConfig = QrStyleConfig(
+        qrOptions = QrOptions(ecc = QrCode.Ecc.HIGH),
+        layout = LayoutOptions(width = 768, height = 768, margin = 28),
+        modules = ModuleOptions(type = DotType.SQUARE),
+        colors = ColorOptions(foreground = "#000000", background = "#ffffff")
+    )
+
+    fun scannabilityCases(data: String = "QRForge4J integration test"): List<StyledVerificationCase> {
+        val safeBase = safeBaseConfig()
+
+        return listOf(
+            StyledVerificationCase("default", data, safeBase),
+            StyledVerificationCase(
+                "round_size_safe",
+                data,
+                safeBase.copy(modules = ModuleOptions(type = DotType.SQUARE, roundSize = true, sizeScale = 0.985))
+            ),
+            StyledVerificationCase(
+                "rounded_background",
+                data,
+                safeBase.copy(layout = safeBase.layout.copy(backgroundCornerRadius = 28.0))
+            ),
+            StyledVerificationCase(
+                "gradient_pattern",
+                data,
+                safeBase.copy(
+                    advanced = AdvancedOptions(
+                        backgroundPattern = BackgroundPattern(enabled = true, type = PatternType.DOTS, opacity = 0.006, size = 18.0)
+                    )
+                )
+            ),
+            StyledVerificationCase(
+                "animation_presence",
+                data,
+                safeBase.copy(animation = AnimationOptions(enabled = true, preset = AnimationPreset.FADE))
+            )
+        )
+    }
+
+    fun defaultCases(data: String = "QRForge4J integration test"): List<StyledVerificationCase> {
+        val safeBase = QrStyleConfig(
+            qrOptions = QrOptions(ecc = QrCode.Ecc.HIGH),
+            layout = LayoutOptions(width = 768, height = 768, margin = 28),
+            modules = ModuleOptions(type = DotType.SQUARE),
+            colors = ColorOptions(foreground = "#000000", background = "#ffffff")
+        )
+
+        return listOf(
+            StyledVerificationCase("default", data, safeBase),
+            StyledVerificationCase(
+                "rounded_smoothing",
+                data,
+                safeBase.copy(
+                    modules = ModuleOptions(type = DotType.ROUNDED, roundSize = true, sizeScale = 0.985, radiusFactor = 0.18)
+                )
+            ),
+            StyledVerificationCase(
+                "corner_logos",
+                data,
+                safeBase.copy(
+                    locators = LocatorOptions(
+                        enabled = true,
+                        defaultStyle = LocatorCornerStyle(
+                            outerShape = LocatorFrameShape.SQUARE,
+                            innerShape = LocatorDotShape.SQUARE,
+                            logo = LocatorLogoOptions(INLINE_LOGO, 0.14)
+                        )
+                    )
+                )
+            ),
+            StyledVerificationCase(
+                "mixed_corners_alignment",
+                data,
+                safeBase.copy(
+                    locators = LocatorOptions(
+                        enabled = true,
+                        defaultStyle = LocatorCornerStyle(outerShape = LocatorFrameShape.SQUARE, innerShape = LocatorDotShape.SQUARE),
+                        topRight = LocatorCornerStyle(outerShape = LocatorFrameShape.ROUNDED, innerShape = LocatorDotShape.CIRCLE),
+                        bottomLeft = LocatorCornerStyle(outerShape = LocatorFrameShape.SQUARE, innerShape = LocatorDotShape.DIAMOND)
+                    ),
+                    alignmentPatterns = AlignmentPatternOptions(enabled = true, shape = AlignmentPatternShape.DIAMOND, sizeRatio = 0.82)
+                )
+            ),
+            StyledVerificationCase(
+                "rounded_background",
+                data,
+                safeBase.copy(layout = safeBase.layout.copy(backgroundCornerRadius = 28.0))
+            ),
+            StyledVerificationCase(
+                "gradient_pattern",
+                data,
+                safeBase.copy(
+                    advanced = AdvancedOptions(
+                        backgroundPattern = BackgroundPattern(enabled = true, type = PatternType.DOTS, opacity = 0.006, size = 18.0)
+                    )
+                )
+            ),
+            StyledVerificationCase(
+                "animation_presence",
+                data,
+                safeBase.copy(animation = AnimationOptions(enabled = true, preset = AnimationPreset.FADE))
+            )
+        )
     }
 }
 
 /** Utility functions for common test scenarios **/
 object QrTestUtils {
-    
     fun testAllModuleStyles(data: String = "Test QR Code"): Map<String, QrVerificationResult> {
         val verifier = QrVerifier()
-        val results = mutableMapOf<String, QrVerificationResult>()
-        
-        DotType.values().forEach { dotType ->
-            val config = QrStyleConfig(modules = ModuleOptions(type = dotType))
-            results[dotType.name] = verifier.verify(data, config)
+        return DotType.entries.associate { dotType ->
+            dotType.name to verifier.verify(data, QrStyleConfig(modules = ModuleOptions(type = dotType)))
         }
-        
-        return results
     }
-    
-    fun testErrorCorrectionLevels(data: String = "Test QR Code"): Map<String, QrVerificationResult> {
-        val verifier = QrVerifier()
-        val results = mutableMapOf<String, QrVerificationResult>()
-        
-        listOf(
-            io.nayuki.qrcodegen.QrCode.Ecc.LOW,
-            io.nayuki.qrcodegen.QrCode.Ecc.MEDIUM,
-            io.nayuki.qrcodegen.QrCode.Ecc.QUARTILE,
-            io.nayuki.qrcodegen.QrCode.Ecc.HIGH
-        ).forEach { ecc ->
-            val config = QrStyleConfig(qrOptions = QrOptions(ecc = ecc))
-            results[ecc.name] = verifier.verify(data, config)
-        }
-        
-        return results
-    }
-    
+
     fun benchmarkPerformance(iterations: Int = 100): List<QrPerformanceMetrics> {
         val verifier = QrVerifier()
-        val results = mutableListOf<QrPerformanceMetrics>()
-        
-        repeat(iterations) { i ->
-            val data = "Performance test iteration $i"
-            val config = QrStyleConfig()
-            results.add(verifier.measurePerformance(data, config))
+        return List(iterations) { i ->
+            verifier.measurePerformance("Performance test iteration $i", QrStyleConfig())
         }
-        
-        return results
     }
-} 
+}
