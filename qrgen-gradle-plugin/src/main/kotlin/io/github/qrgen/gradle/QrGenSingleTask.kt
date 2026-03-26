@@ -1,13 +1,14 @@
 package io.github.qrgen.gradle
 
 import io.github.qrgen.core.*
-import io.github.qrgen.svg.SvgRenderer
-import io.github.qrgen.png.PngRenderer
+import io.github.qrgen.png.BatikPngRenderer
+import io.github.qrgen.svg.DefaultSvgRenderer
 import org.gradle.api.DefaultTask
 import org.gradle.api.file.DirectoryProperty
 import org.gradle.api.provider.Property
 import org.gradle.api.tasks.*
 import org.gradle.api.tasks.options.Option
+import org.gradle.work.DisableCachingByDefault
 import java.io.File
 
 /**
@@ -15,6 +16,7 @@ import java.io.File
  * 
  * Usage: ./gradlew generateQrCode --data="Hello World" --filename="hello" --format=PNG
  */
+@DisableCachingByDefault(because = "QR generation is file-producing work that has not been audited for cache correctness yet.")
 abstract class QrGenSingleTask : DefaultTask() {
     
     @get:Input
@@ -105,18 +107,21 @@ abstract class QrGenSingleTask : DefaultTask() {
         
         val result = when (format) {
             "SVG" -> {
-                val renderer = SvgRenderer()
-                val svg = renderer.render(config.data, qrStyleConfig)
+                val generator = DefaultQrGenerator()
+                val renderer = DefaultSvgRenderer()
+                val svg = renderer.render(generator.generateFromText(config.data, qrStyleConfig))
                 QrResult(svg.toByteArray(), "image/svg+xml", "${config.filename}.svg")
             }
             "PNG" -> {
-                val renderer = PngRenderer()
-                val png = renderer.render(config.data, qrStyleConfig)
+                val generator = DefaultQrGenerator()
+                val renderer = BatikPngRenderer()
+                val png = renderer.render(generator.generateFromText(config.data, qrStyleConfig))
                 QrResult(png, "image/png", "${config.filename}.png")
             }
             else -> {
-                val renderer = SvgRenderer()
-                val svg = renderer.render(config.data, qrStyleConfig)
+                val generator = DefaultQrGenerator()
+                val renderer = DefaultSvgRenderer()
+                val svg = renderer.render(generator.generateFromText(config.data, qrStyleConfig))
                 QrResult(svg.toByteArray(), "image/svg+xml", "${config.filename}.svg")
             }
         }
@@ -139,9 +144,7 @@ abstract class QrGenSingleTask : DefaultTask() {
             modules = ModuleOptions(
                 type = DotType.valueOf(config.moduleType.uppercase())
             ),
-            locators = LocatorOptions(
-                shape = parseLocatorShape(config.cornerStyle)
-            ),
+            locators = LocatorOptions(enabled = true).withLegacyShape(parseLocatorShape(config.cornerStyle)),
             qrOptions = QrOptions(
                 ecc = io.nayuki.qrcodegen.QrCode.Ecc.QUARTILE
             )

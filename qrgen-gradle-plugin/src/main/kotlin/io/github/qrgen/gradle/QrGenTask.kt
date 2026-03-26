@@ -1,17 +1,19 @@
 package io.github.qrgen.gradle
 
 import io.github.qrgen.core.*
-import io.github.qrgen.svg.SvgRenderer
-import io.github.qrgen.png.PngRenderer
+import io.github.qrgen.png.BatikPngRenderer
+import io.github.qrgen.svg.DefaultSvgRenderer
 import org.gradle.api.DefaultTask
 import org.gradle.api.file.DirectoryProperty
 import org.gradle.api.provider.ListProperty
 import org.gradle.api.tasks.*
+import org.gradle.work.DisableCachingByDefault
 import java.io.File
 
 /**
  * Gradle task for generating multiple QR codes
  */
+@DisableCachingByDefault(because = "QR generation is file-producing work that has not been audited for cache correctness yet.")
 abstract class QrGenTask : DefaultTask() {
     
     @get:Input
@@ -44,18 +46,21 @@ abstract class QrGenTask : DefaultTask() {
         
         val result = when (format) {
             "SVG" -> {
-                val renderer = SvgRenderer()
-                val svg = renderer.render(config.data, qrStyleConfig)
+                val generator = DefaultQrGenerator()
+                val renderer = DefaultSvgRenderer()
+                val svg = renderer.render(generator.generateFromText(config.data, qrStyleConfig))
                 QrResult(svg.toByteArray(), "image/svg+xml", "${config.filename}.svg")
             }
             "PNG" -> {
-                val renderer = PngRenderer()
-                val png = renderer.render(config.data, qrStyleConfig)
+                val generator = DefaultQrGenerator()
+                val renderer = BatikPngRenderer()
+                val png = renderer.render(generator.generateFromText(config.data, qrStyleConfig))
                 QrResult(png, "image/png", "${config.filename}.png")
             }
             else -> {
-                val renderer = SvgRenderer()
-                val svg = renderer.render(config.data, qrStyleConfig)
+                val generator = DefaultQrGenerator()
+                val renderer = DefaultSvgRenderer()
+                val svg = renderer.render(generator.generateFromText(config.data, qrStyleConfig))
                 QrResult(svg.toByteArray(), "image/svg+xml", "${config.filename}.svg")
             }
         }
@@ -78,9 +83,7 @@ abstract class QrGenTask : DefaultTask() {
             modules = ModuleOptions(
                 type = DotType.valueOf(config.moduleType.uppercase())
             ),
-            locators = LocatorOptions(
-                shape = parseLocatorShape(config.cornerStyle)
-            ),
+            locators = LocatorOptions(enabled = true).withLegacyShape(parseLocatorShape(config.cornerStyle)),
             logo = if (config.withLogo != null) {
                 LogoOptions(href = config.withLogo)
             } else LogoOptions(),

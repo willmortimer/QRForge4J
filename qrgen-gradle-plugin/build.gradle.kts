@@ -1,15 +1,22 @@
 plugins {
     `kotlin-dsl`
+    `java-gradle-plugin`
+    id("org.jetbrains.dokka") version "1.9.10"
     id("maven-publish")
 }
 
 group = "io.github.willmortimer"
 version = "1.0.0"
 
+repositories {
+    mavenCentral()
+    mavenLocal()
+}
+
 dependencies {
-    implementation(project(":qrgen-core"))
-    implementation(project(":qrgen-svg"))
-    implementation(project(":qrgen-png"))
+    implementation("io.github.willmortimer:qrgen-core:1.0.0")
+    implementation("io.github.willmortimer:qrgen-svg:1.0.0")
+    implementation("io.github.willmortimer:qrgen-png:1.0.0")
     
     implementation(gradleApi())
     implementation(localGroovy())
@@ -25,8 +32,8 @@ tasks.test {
 gradlePlugin {
     plugins {
         create("qrgen") {
-            id = "io.github.willmortimer.gradle-plugin"
-            implementationClass = "io.github.willmortimer.gradle.QrGenPlugin"
+            id = "io.github.willmortimer.qrgen"
+            implementationClass = "io.github.qrgen.gradle.QrGenPlugin"
             displayName = "QRGen Gradle Plugin"
             description = "Gradle plugin for generating QR codes at build time"
         }
@@ -61,10 +68,23 @@ publishing {
                 
                 scm {
                     connection.set("scm:git:git://github.com/willmortimer/QRForge4J.git")
-                    developerConnection.set("scm:git:ssh://github.com:qrgen-kotlin/qrgen.git")
+                    developerConnection.set("scm:git:ssh://github.com/willmortimer/QRForge4J.git")
                     url.set("https://github.com/willmortimer/QRForge4J/tree/main")
                 }
             }
         }
     }
-} 
+    repositories {
+        mavenLocal()
+        maven {
+            name = "GitHubPackages"
+            url = uri("https://maven.pkg.github.com/willmortimer/QRForge4J")
+            credentials {
+                username = providers.environmentVariable("GITHUB_ACTOR").orNull
+                    ?: providers.gradleProperty("gpr.user").orNull
+                password = providers.environmentVariable("GITHUB_TOKEN").orNull
+                    ?: providers.gradleProperty("gpr.key").orNull
+            }
+        }
+    }
+}
