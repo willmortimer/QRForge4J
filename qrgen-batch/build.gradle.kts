@@ -11,6 +11,7 @@ dependencies {
     api(project(":qrgen-core"))
     api(project(":qrgen-svg"))
     api(project(":qrgen-png"))
+    api(project(":qrgen-pdf"))
     api(project(":qrgen-dsl"))
     
     // Coroutines for async processing
@@ -25,7 +26,7 @@ dependencies {
 
 java {
     toolchain {
-        languageVersion.set(JavaLanguageVersion.of(21))
+        languageVersion.set(JavaLanguageVersion.of(17))
     }
     withSourcesJar()
     withJavadocJar()

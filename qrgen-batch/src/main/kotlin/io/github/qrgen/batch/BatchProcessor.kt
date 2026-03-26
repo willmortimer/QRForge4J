@@ -2,6 +2,7 @@ package io.github.qrgen.batch
 
 import io.github.qrgen.core.*
 import io.github.qrgen.dsl.*
+import io.github.qrgen.pdf.QrPdfRenderer
 import io.github.qrgen.png.*
 import io.github.qrgen.svg.DefaultSvgRenderer
 import kotlinx.coroutines.*
@@ -26,7 +27,7 @@ data class BatchConfig(
     val fileNamePattern: String = "qr_{index}_{hash}.{ext}"
 )
 
-enum class OutputFormat { SVG, PNG }
+enum class OutputFormat { SVG, PNG, JPEG, PDF }
 
 /** Batch processing result **/
 data class BatchResult(
@@ -62,6 +63,7 @@ class QrBatchProcessor(
     private val generator = DefaultQrGenerator()
     private val svgRenderer = DefaultSvgRenderer()
     private val pngRenderer = BatikPngRenderer()
+    private val pdfRenderer = QrPdfRenderer()
     
     private val processedCount = AtomicLong(0)
     private val memoryMonitor = MemoryMonitor(config.memoryThresholdMB)
@@ -192,6 +194,8 @@ class QrBatchProcessor(
                         val output = when (config.outputFormat) {
                             OutputFormat.SVG -> svgRenderer.render(qrResult)
                             OutputFormat.PNG -> String(pngRenderer.render(qrResult), Charsets.ISO_8859_1)
+                            OutputFormat.JPEG -> String(pngRenderer.renderJpeg(qrResult), Charsets.ISO_8859_1)
+                            OutputFormat.PDF -> String(pdfRenderer.render(qrResult), Charsets.ISO_8859_1)
                         }
                         
                         // Save to file if output directory specified
@@ -205,6 +209,8 @@ class QrBatchProcessor(
                             when (config.outputFormat) {
                                 OutputFormat.SVG -> file.writeText(output)
                                 OutputFormat.PNG -> file.writeBytes(pngRenderer.render(qrResult))
+                                OutputFormat.JPEG -> file.writeBytes(pngRenderer.renderJpeg(qrResult))
+                                OutputFormat.PDF -> file.writeBytes(pdfRenderer.render(qrResult))
                             }
                             outputFiles[absoluteIndex] = file
                         }
@@ -257,6 +263,8 @@ class QrBatchProcessor(
                         val output = when (config.outputFormat) {
                             OutputFormat.SVG -> svgRenderer.render(qrResult)
                             OutputFormat.PNG -> String(pngRenderer.render(qrResult), Charsets.ISO_8859_1)
+                            OutputFormat.JPEG -> String(pngRenderer.renderJpeg(qrResult), Charsets.ISO_8859_1)
+                            OutputFormat.PDF -> String(pdfRenderer.render(qrResult), Charsets.ISO_8859_1)
                         }
                         
                         // Save to file if output directory specified
@@ -270,6 +278,8 @@ class QrBatchProcessor(
                             when (config.outputFormat) {
                                 OutputFormat.SVG -> file.writeText(output)
                                 OutputFormat.PNG -> file.writeBytes(pngRenderer.render(qrResult))
+                                OutputFormat.JPEG -> file.writeBytes(pngRenderer.renderJpeg(qrResult))
+                                OutputFormat.PDF -> file.writeBytes(pdfRenderer.render(qrResult))
                             }
                             outputFiles[absoluteIndex] = file
                         }
