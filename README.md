@@ -11,6 +11,7 @@ QRForge4J is a multi-module JVM QR generation library written in Kotlin. It ship
 - Main repo Kotlin plugin: 2.3.10
 
 Project status details are in [`documents/STATE_OF_REPO.md`](./documents/STATE_OF_REPO.md).
+Installation details are in [`documents/MAVEN_INSTALL.md`](./documents/MAVEN_INSTALL.md).
 
 ## Modules
 
@@ -67,6 +68,8 @@ With the Gradle wrapper:
 ## Installation
 
 Published modules use group `io.github.willmortimer` and artifact ids that follow the module names.
+
+Detailed install guidance for GitHub Packages, `mavenLocal()`, and Ktor apps is in [`documents/MAVEN_INSTALL.md`](./documents/MAVEN_INSTALL.md).
 
 GitHub Packages repository example:
 
