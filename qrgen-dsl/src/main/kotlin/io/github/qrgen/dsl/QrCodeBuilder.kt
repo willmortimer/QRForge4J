@@ -3,6 +3,7 @@ package io.github.qrgen.dsl
 import io.github.qrgen.core.*
 import io.github.qrgen.svg.DefaultSvgRenderer
 import io.nayuki.qrcodegen.QrCode.Ecc
+import java.io.File
 
 /** Main entry point for the QR code DSL **/
 object QRCode {
@@ -30,6 +31,9 @@ class QrCodeBuilder {
     fun margin(pixels: Int) = apply { config = config.copy(layout = config.layout.copy(margin = pixels)) }
     fun circleShape(enabled: Boolean = true) = apply { 
         config = config.copy(layout = config.layout.copy(circleShape = enabled))
+    }
+    fun backgroundCorners(radius: Double) = apply {
+        config = config.copy(layout = config.layout.copy(backgroundCornerRadius = radius))
     }
     
     // QR options
@@ -81,6 +85,12 @@ class QrCodeBuilder {
         val builder = LocatorOptionsBuilder(config.locators)
         builder.block()
         config = config.copy(locators = builder.build())
+    }
+    fun cornerLocators(block: LocatorOptionsBuilder.() -> Unit) = cornerLocator(block)
+    fun alignmentPattern(block: AlignmentPatternOptionsBuilder.() -> Unit) = apply {
+        val builder = AlignmentPatternOptionsBuilder(config.alignmentPatterns)
+        builder.block()
+        config = config.copy(alignmentPatterns = builder.build())
     }
     
     // Gradients
@@ -143,6 +153,26 @@ class QrCodeBuilder {
         val builder = AdvancedOptionsBuilder(config.advanced)
         builder.block()
         config = config.copy(advanced = builder.build())
+    }
+    fun animation(block: AnimationOptionsBuilder.() -> Unit) = apply {
+        val builder = AnimationOptionsBuilder(config.animation)
+        builder.block()
+        config = config.copy(animation = builder.build())
+    }
+    fun cache(maxEntries: Int = 128) = apply {
+        config = config.copy(cache = CacheOptions(enabled = true, maxEntries = maxEntries))
+    }
+    fun template(document: QrTemplateDocument, registry: QrProfileRegistry = QrProfileRegistry()) = apply {
+        config = registry.merge(document)
+    }
+    fun template(content: String, formatHint: String? = null, registry: QrProfileRegistry = QrProfileRegistry()) = apply {
+        config = registry.merge(QrConfigIO.readTemplate(content, formatHint))
+    }
+    fun template(file: File, registry: QrProfileRegistry = QrProfileRegistry()) = apply {
+        config = registry.merge(QrConfigIO.readTemplate(file))
+    }
+    fun profile(name: String, registry: QrProfileRegistry) = apply {
+        config = registry.resolve(name) ?: config
     }
     
     // Build methods
@@ -209,6 +239,18 @@ class ModuleOptionsBuilder(private var options: ModuleOptions) {
     var classyRounded: Boolean
         get() = options.classyRounded
         set(value) { options = options.copy(classyRounded = value) }
+
+    var roundSize: Boolean
+        get() = options.roundSize
+        set(value) { options = options.copy(roundSize = value) }
+
+    var sizeScale: Double
+        get() = options.sizeScale
+        set(value) { options = options.copy(sizeScale = value) }
+
+    fun dynamicSize(scale: Double = 0.92) {
+        options = options.copy(roundSize = true, sizeScale = scale)
+    }
     
     internal fun build() = options
 }
@@ -241,21 +283,108 @@ class LogoOptionsBuilder(private var options: LogoOptions) {
 
 /** Locator options builder **/
 class LocatorOptionsBuilder(private var options: LocatorOptions) {
+    var enabled: Boolean
+        get() = options.enabled
+        set(value) { options = options.copy(enabled = value) }
+
     var color: String
+        get() = options.defaultStyle.color
+        set(value) { options = options.copy(defaultStyle = options.defaultStyle.copy(color = value), enabled = true) }
+
+    var sizeRatio: Double
+        get() = options.defaultStyle.sizeRatio
+        set(value) { options = options.copy(defaultStyle = options.defaultStyle.copy(sizeRatio = value), enabled = true) }
+
+    fun square() { outer(LocatorFrameShape.SQUARE); inner(LocatorDotShape.SQUARE) }
+    fun circle() { outer(LocatorFrameShape.CIRCLE); inner(LocatorDotShape.CIRCLE) }
+    fun rounded(radiusFactor: Double = 0.35) {
+        options = options.copy(
+            enabled = true,
+            defaultStyle = options.defaultStyle.copy(
+                outerShape = LocatorFrameShape.ROUNDED,
+                innerShape = LocatorDotShape.ROUNDED,
+                radiusFactor = radiusFactor
+            )
+        )
+    }
+    fun classy() { outer(LocatorFrameShape.CLASSY); inner(LocatorDotShape.CIRCLE) }
+    fun outer(shape: LocatorFrameShape) {
+        options = options.copy(enabled = true, defaultStyle = options.defaultStyle.copy(outerShape = shape))
+    }
+    fun inner(shape: LocatorDotShape) {
+        options = options.copy(enabled = true, defaultStyle = options.defaultStyle.copy(innerShape = shape))
+    }
+    fun logo(href: String, sizeRatio: Double = 0.45) {
+        options = options.copy(enabled = true, defaultStyle = options.defaultStyle.copy(logo = LocatorLogoOptions(href, sizeRatio)))
+    }
+    fun topLeft(block: LocatorCornerStyleBuilder.() -> Unit) {
+        options = options.copy(enabled = true, topLeft = LocatorCornerStyleBuilder(options.topLeft ?: options.defaultStyle).apply(block).build())
+    }
+    fun topRight(block: LocatorCornerStyleBuilder.() -> Unit) {
+        options = options.copy(enabled = true, topRight = LocatorCornerStyleBuilder(options.topRight ?: options.defaultStyle).apply(block).build())
+    }
+    fun bottomLeft(block: LocatorCornerStyleBuilder.() -> Unit) {
+        options = options.copy(enabled = true, bottomLeft = LocatorCornerStyleBuilder(options.bottomLeft ?: options.defaultStyle).apply(block).build())
+    }
+    
+    internal fun build() = options
+}
+
+class LocatorCornerStyleBuilder(private var style: LocatorCornerStyle) {
+    var enabled: Boolean
+        get() = style.enabled
+        set(value) { style = style.copy(enabled = value) }
+
+    var color: String
+        get() = style.color
+        set(value) { style = style.copy(color = value) }
+
+    var sizeRatio: Double
+        get() = style.sizeRatio
+        set(value) { style = style.copy(sizeRatio = value) }
+
+    fun outer(shape: LocatorFrameShape) { style = style.copy(outerShape = shape) }
+    fun inner(shape: LocatorDotShape) { style = style.copy(innerShape = shape) }
+    fun rounded(radiusFactor: Double = 0.35) { style = style.copy(outerShape = LocatorFrameShape.ROUNDED, innerShape = LocatorDotShape.ROUNDED, radiusFactor = radiusFactor) }
+    fun logo(href: String, sizeRatio: Double = 0.45) { style = style.copy(logo = LocatorLogoOptions(href, sizeRatio)) }
+
+    internal fun build() = style
+}
+
+class AlignmentPatternOptionsBuilder(private var options: AlignmentPatternOptions) {
+    var enabled: Boolean
+        get() = options.enabled
+        set(value) { options = options.copy(enabled = value) }
+
+    var color: String?
         get() = options.color
         set(value) { options = options.copy(color = value) }
-    
+
     var sizeRatio: Double
         get() = options.sizeRatio
         set(value) { options = options.copy(sizeRatio = value) }
-    
-    fun square() { options = options.copy(shape = LocatorShape.Square) }
-    fun circle() { options = options.copy(shape = LocatorShape.Circle) }
-    fun rounded(radiusFactor: Double = 0.35) { 
-        options = options.copy(shape = LocatorShape.Rounded(radiusFactor)) 
-    }
-    fun classy() { options = options.copy(shape = LocatorShape.Classy) }
-    
+
+    fun square() { options = options.copy(enabled = true, shape = AlignmentPatternShape.SQUARE) }
+    fun circle() { options = options.copy(enabled = true, shape = AlignmentPatternShape.CIRCLE) }
+    fun diamond() { options = options.copy(enabled = true, shape = AlignmentPatternShape.DIAMOND) }
+    fun star() { options = options.copy(enabled = true, shape = AlignmentPatternShape.STAR) }
+
+    internal fun build() = options
+}
+
+class AnimationOptionsBuilder(private var options: AnimationOptions) {
+    var durationSeconds: Double
+        get() = options.durationSeconds
+        set(value) { options = options.copy(durationSeconds = value, enabled = true) }
+
+    var repeatCount: String
+        get() = options.repeatCount
+        set(value) { options = options.copy(repeatCount = value, enabled = true) }
+
+    fun fade() { options = options.copy(enabled = true, preset = AnimationPreset.FADE) }
+    fun pulse() { options = options.copy(enabled = true, preset = AnimationPreset.PULSE) }
+    fun drawIn() { options = options.copy(enabled = true, preset = AnimationPreset.DRAW_IN) }
+
     internal fun build() = options
 }
 
