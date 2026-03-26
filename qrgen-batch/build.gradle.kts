@@ -40,7 +40,7 @@ publishing {
             pom {
                 name.set("QRGen Batch Processing")
                 description.set("Efficient batch processing for high-volume QR generation")
-                url.set("https://github.com/yourusername/qr-generator")
+                url.set("https://github.com/willmortimer/QRForge4J")
                 
                 licenses {
                     license {

@@ -32,7 +32,7 @@ publishing {
             pom {
                 name.set("QRGen Kotlin DSL")
                 description.set("Kotlin DSL and builder API for QR code generation")
-                url.set("https://github.com/yourusername/qr-generator")
+                url.set("https://github.com/willmortimer/QRForge4J")
                 
                 licenses {
                     license {

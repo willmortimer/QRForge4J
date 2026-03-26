@@ -191,11 +191,25 @@ Required environment variables:
 - `GITHUB_ACTOR`
 - `GITHUB_TOKEN`
 
+Optional Maven Central release secrets for GitHub Actions:
+
+- `CENTRAL_PORTAL_USERNAME`
+- `CENTRAL_PORTAL_PASSWORD`
+- `SIGNING_KEY`
+- `SIGNING_PASSWORD`
+
 Local publishing:
 
 ```bash
 ./gradlew publishAllToMavenLocal
 ./gradlew -p qrgen-gradle-plugin publishToMavenLocal
+```
+
+Maven Central publishing:
+
+```bash
+./gradlew releaseToCentralPortal
+./gradlew -p qrgen-gradle-plugin releaseToCentralPortal
 ```
 
 API docs:

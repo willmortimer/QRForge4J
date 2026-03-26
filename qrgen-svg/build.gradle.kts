@@ -31,7 +31,7 @@ publishing {
             pom {
                 name.set("QRGen SVG Renderer")
                 description.set("SVG rendering engine for QR codes with advanced styling")
-                url.set("https://github.com/yourusername/qr-generator")
+                url.set("https://github.com/willmortimer/QRForge4J")
                 
                 licenses {
                     license {

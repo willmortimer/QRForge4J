@@ -41,7 +41,7 @@ publishing {
             pom {
                 name.set("QRGen Testing Utilities")
                 description.set("ZXing-based testing and verification utilities for QR codes")
-                url.set("https://github.com/yourusername/qr-generator")
+                url.set("https://github.com/willmortimer/QRForge4J")
                 
                 licenses {
                     license {

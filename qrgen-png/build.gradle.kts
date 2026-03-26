@@ -39,7 +39,7 @@ publishing {
             pom {
                 name.set("QRGen PNG Renderer")
                 description.set("High-quality PNG rendering using Apache Batik")
-                url.set("https://github.com/yourusername/qr-generator")
+                url.set("https://github.com/willmortimer/QRForge4J")
                 
                 licenses {
                     license {

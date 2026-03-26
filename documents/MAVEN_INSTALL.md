@@ -4,7 +4,7 @@ This guide covers the three practical install paths for QRForge4J:
 
 - consume published artifacts from GitHub Packages
 - consume local unpublished artifacts from `mavenLocal()`
-- prepare for future Maven Central publishing
+- consume public artifacts from Maven Central once Central publishing is enabled
 
 ## GitHub Packages
 
@@ -68,6 +68,21 @@ dependencies {
 
 This path does not require any GitHub token.
 
+What `mavenLocal()` means:
+
+- Gradle writes the built artifacts into your user-local Maven cache, usually under `~/.m2/repository/`
+- another local project on the same Mac can resolve those artifacts from that cache
+- nothing is uploaded to GitHub or Maven Central
+- this is the fastest way to test one local project against another local project
+
+Typical local flow:
+
+1. In `QRForge4J`, run `./gradlew publishAllToMavenLocal`
+2. In your Ktor app, add `mavenLocal()` to `repositories`
+3. In your Ktor app, declare `implementation("io.github.willmortimer:qrgen-ktor:1.0.0")`
+4. Run the Ktor app normally
+5. If you make QRForge4J changes, rerun `publishAllToMavenLocal` so the local cache gets the updated artifact
+
 ## Ktor App Example
 
 ```kotlin
@@ -90,13 +105,17 @@ fun Application.module() {
 
 ## Maven Central
 
-QRForge4J is not yet configured to publish to Maven Central.
+QRForge4J now has build wiring for Maven Central publishing through the Sonatype Central Portal compatibility service, but it still requires Sonatype account setup and release secrets before GitHub Actions can actually publish there.
 
-To add Maven Central publishing later, the project will need:
+Required setup:
 
 - a verified Sonatype Central namespace for `io.github.willmortimer`
 - Central publishing credentials from the Sonatype Portal
-- signed artifacts
-- Central-compatible publishing wiring in Gradle or via a release tool
+- an ASCII-armored GPG private key for signing
+- repository secrets in GitHub Actions:
+  - `CENTRAL_PORTAL_USERNAME`
+  - `CENTRAL_PORTAL_PASSWORD`
+  - `SIGNING_KEY`
+  - `SIGNING_PASSWORD`
 
-Until that is added, GitHub Packages and `mavenLocal()` are the supported install paths.
+Once that is set up, the release workflow can publish the same artifacts to Maven Central in addition to GitHub Packages.

@@ -33,7 +33,7 @@ publishing {
             pom {
                 name.set("QRGen Core")
                 description.set("Core QR code generation and styling engine")
-                url.set("https://github.com/yourusername/qr-generator")
+                url.set("https://github.com/willmortimer/QRForge4J")
                 
                 licenses {
                     license {
@@ -44,8 +44,8 @@ publishing {
                 
                 developers {
                     developer {
-                        id.set("qrgen")
-                        name.set("QRGen Team")
+                        id.set("willmortimer")
+                        name.set("Will Mortimer")
                     }
                 }
             }

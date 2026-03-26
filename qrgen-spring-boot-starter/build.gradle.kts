@@ -53,7 +53,7 @@ publishing {
             pom {
                 name.set("QRGen Spring Boot Starter")
                 description.set("Spring Boot auto-configuration for QRGen library")
-                url.set("https://github.com/yourusername/qr-generator")
+                url.set("https://github.com/willmortimer/QRForge4J")
                 
                 licenses {
                     license {

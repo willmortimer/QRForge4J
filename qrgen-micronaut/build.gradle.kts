@@ -77,16 +77,15 @@ publishing {
                 
                 developers {
                     developer {
-                        id.set("qrgen-team")
-                        name.set("QRGen Team")
-                        email.set("contact@willmortimer.dev")
+                        id.set("willmortimer")
+                        name.set("Will Mortimer")
                     }
                 }
                 
                 scm {
                     connection.set("scm:git:git://github.com/willmortimer/QRForge4J.git")
                     developerConnection.set("scm:git:ssh://github.com/willmortimer/QRForge4J.git")
-                    url.set("https://github.com/willmortimer/QRForge4J/tree/main")
+                    url.set("https://github.com/willmortimer/QRForge4J")
                 }
             }
         }
