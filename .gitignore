@@ -64,6 +64,9 @@ gradle.properties.local
 # Maven
 target/
 
+# Dokka (./gradlew dokkaHtmlMultiModule)
+docs/api/
+
 # Kotlin
 *.kotlin_module
 
