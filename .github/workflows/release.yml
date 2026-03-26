@@ -12,6 +12,12 @@ permissions:
 jobs:
   publish-main:
     runs-on: ubuntu-latest
+    env:
+      CENTRAL_PORTAL_USERNAME: ${{ secrets.CENTRAL_PORTAL_USERNAME }}
+      CENTRAL_PORTAL_PASSWORD: ${{ secrets.CENTRAL_PORTAL_PASSWORD }}
+      SIGNING_KEY: ${{ secrets.SIGNING_KEY }}
+      SIGNING_PASSWORD: ${{ secrets.SIGNING_PASSWORD }}
+      CENTRAL_NAMESPACE: io.github.willmortimer
     steps:
       - uses: actions/checkout@v4
 
@@ -34,14 +40,8 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Publish main modules to Maven Central
-        if: ${{ secrets.CENTRAL_PORTAL_USERNAME != '' && secrets.CENTRAL_PORTAL_PASSWORD != '' && secrets.SIGNING_KEY != '' }}
+        if: ${{ env.CENTRAL_PORTAL_USERNAME != '' && env.CENTRAL_PORTAL_PASSWORD != '' && env.SIGNING_KEY != '' }}
         run: ./gradlew releaseToCentralPortal
-        env:
-          CENTRAL_PORTAL_USERNAME: ${{ secrets.CENTRAL_PORTAL_USERNAME }}
-          CENTRAL_PORTAL_PASSWORD: ${{ secrets.CENTRAL_PORTAL_PASSWORD }}
-          SIGNING_KEY: ${{ secrets.SIGNING_KEY }}
-          SIGNING_PASSWORD: ${{ secrets.SIGNING_PASSWORD }}
-          CENTRAL_NAMESPACE: io.github.willmortimer
 
       - name: Upload CLI distributions to release
         uses: softprops/action-gh-release@v2
@@ -53,6 +53,12 @@ jobs:
 
   publish-plugin:
     runs-on: ubuntu-latest
+    env:
+      CENTRAL_PORTAL_USERNAME: ${{ secrets.CENTRAL_PORTAL_USERNAME }}
+      CENTRAL_PORTAL_PASSWORD: ${{ secrets.CENTRAL_PORTAL_PASSWORD }}
+      SIGNING_KEY: ${{ secrets.SIGNING_KEY }}
+      SIGNING_PASSWORD: ${{ secrets.SIGNING_PASSWORD }}
+      CENTRAL_NAMESPACE: io.github.willmortimer
     steps:
       - uses: actions/checkout@v4
 
@@ -70,11 +76,5 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Publish standalone Gradle plugin to Maven Central
-        if: ${{ secrets.CENTRAL_PORTAL_USERNAME != '' && secrets.CENTRAL_PORTAL_PASSWORD != '' && secrets.SIGNING_KEY != '' }}
+        if: ${{ env.CENTRAL_PORTAL_USERNAME != '' && env.CENTRAL_PORTAL_PASSWORD != '' && env.SIGNING_KEY != '' }}
         run: ./gradlew -p qrgen-gradle-plugin releaseToCentralPortal
-        env:
-          CENTRAL_PORTAL_USERNAME: ${{ secrets.CENTRAL_PORTAL_USERNAME }}
-          CENTRAL_PORTAL_PASSWORD: ${{ secrets.CENTRAL_PORTAL_PASSWORD }}
-          SIGNING_KEY: ${{ secrets.SIGNING_KEY }}
-          SIGNING_PASSWORD: ${{ secrets.SIGNING_PASSWORD }}
-          CENTRAL_NAMESPACE: io.github.willmortimer
