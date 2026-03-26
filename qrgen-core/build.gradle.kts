@@ -9,6 +9,8 @@ version = "1.0.0"
 
 dependencies {
     api("io.nayuki:qrcodegen:1.8.0")
+    api("com.fasterxml.jackson.module:jackson-module-kotlin:2.18.2")
+    api("com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.18.2")
     implementation(kotlin("stdlib"))
     
     testImplementation(kotlin("test"))
@@ -17,7 +19,7 @@ dependencies {
 
 java {
     toolchain {
-        languageVersion.set(JavaLanguageVersion.of(21))
+        languageVersion.set(JavaLanguageVersion.of(17))
     }
     withSourcesJar()
     withJavadocJar()
