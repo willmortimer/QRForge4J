@@ -1,0 +1,50 @@
+[tools]
+java = "temurin-17"
+gradle = "9.4.0"
+
+[env]
+GRADLE_OPTS = "-Dorg.gradle.java.installations.auto-download=false"
+
+[tasks.bootstrap]
+description = "Verify the local Java and Gradle toolchain"
+run = "java -version && gradle -v"
+
+[tasks.build]
+description = "Build the main multi-module repo with mise-managed Gradle"
+run = "gradle build"
+
+[tasks.test]
+description = "Run the main repo test suite with mise-managed Gradle"
+run = "gradle test"
+
+[tasks.build_plugin]
+description = "Build the standalone QRGen Gradle plugin nested build"
+run = "gradle -p qrgen-gradle-plugin build"
+
+[tasks.publish_local]
+description = "Publish all main modules and the standalone plugin to Maven local"
+run = "gradle publishAllToMavenLocal && gradle -p qrgen-gradle-plugin publishToMavenLocal"
+
+[tasks.verify_integrations]
+description = "Compile the framework integrations and standalone plugin"
+run = "gradle qrgen-ktor:build qrgen-spring-boot-starter:build qrgen-micronaut:build && gradle -p qrgen-gradle-plugin build"
+
+[tasks.docs]
+description = "Generate multi-module API docs"
+run = "gradle verifyDocs"
+
+[tasks.benchmarks]
+description = "Run benchmark scenarios and write benchmark reports"
+run = "gradle :qrgen-test:runBenchmarks"
+
+[tasks.goldens]
+description = "Generate local golden references under build/generated-goldens"
+run = "gradle :qrgen-test:generateGoldens"
+
+[tasks.release_dry_run]
+description = "Run the local build and publish flow without pushing artifacts remotely"
+run = "gradle build verifyDocs publishAllToMavenLocal && gradle -p qrgen-gradle-plugin build publishToMavenLocal"
+
+[tasks.build_wrapper]
+description = "Build the main repo with the Gradle wrapper"
+run = "./gradlew build"
