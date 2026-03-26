@@ -13,6 +13,7 @@ dependencies {
     api(project(":qrgen-core"))
     api(project(":qrgen-svg"))
     api(project(":qrgen-png"))
+    api(project(":qrgen-pdf"))
     api(project(":qrgen-dsl"))
     api(project(":qrgen-batch"))
     
@@ -32,7 +33,7 @@ dependencies {
 
 java {
     toolchain {
-        languageVersion.set(JavaLanguageVersion.of(21))
+        languageVersion.set(JavaLanguageVersion.of(17))
     }
     withSourcesJar()
     withJavadocJar()
@@ -40,7 +41,7 @@ java {
 
 kotlin {
     compilerOptions {
-        jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_21)
+        jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
     }
 }
 

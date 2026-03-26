@@ -3,6 +3,7 @@ package io.github.qrgen.spring
 import io.github.qrgen.batch.QrBatchProcessor
 import io.github.qrgen.core.*
 import io.github.qrgen.dsl.*
+import io.github.qrgen.pdf.QrPdfRenderer
 import io.github.qrgen.png.BatikPngRenderer
 import io.github.qrgen.svg.DefaultSvgRenderer
 import org.springframework.stereotype.Service
@@ -17,9 +18,11 @@ class QrGenService(
     private val qrGenerator: DefaultQrGenerator,
     private val svgRenderer: DefaultSvgRenderer,
     private val pngRenderer: BatikPngRenderer?,
+    private val pdfRenderer: QrPdfRenderer?,
     private val batchProcessor: QrBatchProcessor,
     private val properties: QrGenProperties
 ) {
+    private val cache = QrRenderCache(CacheOptions(enabled = true, maxEntries = 256))
     
     /**
      * Generate QR code with default configuration
@@ -34,30 +37,62 @@ class QrGenService(
      */
     fun generateQr(data: String, config: QrStyleConfig, format: QrFormat = QrFormat.SVG): QrResponse {
         validateInput(data)
-        
-        val qrResult = qrGenerator.generateFromText(data, config)
-        
+        val bytes = cache.getOrPut(qrCacheKey(data, config, format.name)) {
+            val qrResult = qrGenerator.generateFromText(data, config)
+            when (format) {
+                QrFormat.SVG -> svgRenderer.render(qrResult).toByteArray()
+                QrFormat.PNG -> {
+                    requireNotNull(pngRenderer) { "PNG renderer not available. Add qrgen-png dependency." }
+                    pngRenderer.render(qrResult)
+                }
+                QrFormat.JPEG -> {
+                    requireNotNull(pngRenderer) { "JPEG renderer not available. Add qrgen-png dependency." }
+                    pngRenderer.renderJpeg(qrResult)
+                }
+                QrFormat.PDF -> {
+                    requireNotNull(pdfRenderer) { "PDF renderer not available. Add qrgen-pdf dependency." }
+                    pdfRenderer.render(qrResult)
+                }
+            }
+        }
         return when (format) {
             QrFormat.SVG -> {
-                val svg = svgRenderer.render(qrResult)
                 QrResponse(
-                    data = svg.toByteArray(),
+                    data = bytes,
                     contentType = "image/svg+xml",
                     filename = "qr.svg",
-                    size = svg.length
+                    size = bytes.size
                 )
             }
             QrFormat.PNG -> {
-                requireNotNull(pngRenderer) { "PNG renderer not available. Add qrgen-png dependency." }
-                val png = pngRenderer.render(qrResult)
                 QrResponse(
-                    data = png,
+                    data = bytes,
                     contentType = "image/png",
                     filename = "qr.png",
-                    size = png.size
+                    size = bytes.size
+                )
+            }
+            QrFormat.JPEG -> {
+                QrResponse(
+                    data = bytes,
+                    contentType = "image/jpeg",
+                    filename = "qr.jpg",
+                    size = bytes.size
+                )
+            }
+            QrFormat.PDF -> {
+                QrResponse(
+                    data = bytes,
+                    contentType = "application/pdf",
+                    filename = "qr.pdf",
+                    size = bytes.size
                 )
             }
         }
+    }
+
+    fun generateQr(request: QrGenerateRequest): QrResponse {
+        return generateQr(request.data, QrRequestMapper.toConfig(request), QrFormat.valueOf(request.format.uppercase()))
     }
     
     /**
@@ -90,6 +125,18 @@ class QrGenService(
                     size = png.size
                 )
             }
+            QrFormat.JPEG -> {
+                requireNotNull(pngRenderer) { "JPEG renderer not available. Add qrgen-png dependency." }
+                val qrResult = builder.build(data)
+                val jpeg = pngRenderer.renderJpeg(qrResult)
+                QrResponse(jpeg, "image/jpeg", "qr.jpg", jpeg.size)
+            }
+            QrFormat.PDF -> {
+                requireNotNull(pdfRenderer) { "PDF renderer not available. Add qrgen-pdf dependency." }
+                val qrResult = builder.build(data)
+                val pdf = pdfRenderer.render(qrResult)
+                QrResponse(pdf, "application/pdf", "qr.pdf", pdf.size)
+            }
         }
     }
     
@@ -110,6 +157,8 @@ class QrGenService(
             outputFormat = when (format) {
                 QrFormat.SVG -> io.github.qrgen.batch.OutputFormat.SVG
                 QrFormat.PNG -> io.github.qrgen.batch.OutputFormat.PNG
+                QrFormat.JPEG -> io.github.qrgen.batch.OutputFormat.JPEG
+                QrFormat.PDF -> io.github.qrgen.batch.OutputFormat.PDF
             }
         )
         
@@ -218,4 +267,4 @@ data class BatchError(
     val errorMessage: String
 )
 
-enum class QrFormat { SVG, PNG } 
+enum class QrFormat { SVG, PNG, JPEG, PDF }

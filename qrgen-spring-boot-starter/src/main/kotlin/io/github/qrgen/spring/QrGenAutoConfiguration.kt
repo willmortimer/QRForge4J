@@ -3,6 +3,7 @@ package io.github.qrgen.spring
 import io.github.qrgen.batch.QrBatchProcessor
 import io.github.qrgen.core.DefaultQrGenerator
 import io.github.qrgen.dsl.QRCode
+import io.github.qrgen.pdf.QrPdfRenderer
 import io.github.qrgen.png.BatikPngRenderer
 import io.github.qrgen.svg.DefaultSvgRenderer
 import org.springframework.boot.autoconfigure.AutoConfiguration
@@ -32,6 +33,10 @@ class QrGenAutoConfiguration {
     @ConditionalOnMissingBean
     @ConditionalOnClass(name = ["org.apache.batik.transcoder.image.PNGTranscoder"])
     fun pngRenderer(): BatikPngRenderer = BatikPngRenderer()
+
+    @Bean
+    @ConditionalOnMissingBean
+    fun pdfRenderer(): QrPdfRenderer = QrPdfRenderer()
     
     @Bean
     @ConditionalOnMissingBean
@@ -43,9 +48,10 @@ class QrGenAutoConfiguration {
         qrGenerator: DefaultQrGenerator,
         svgRenderer: DefaultSvgRenderer,
         pngRenderer: BatikPngRenderer?,
+        pdfRenderer: QrPdfRenderer?,
         batchProcessor: QrBatchProcessor,
         properties: QrGenProperties
-    ): QrGenService = QrGenService(qrGenerator, svgRenderer, pngRenderer, batchProcessor, properties)
+    ): QrGenService = QrGenService(qrGenerator, svgRenderer, pngRenderer, pdfRenderer, batchProcessor, properties)
 }
 
 /**
