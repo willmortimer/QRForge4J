@@ -7,7 +7,10 @@ group = "io.github.willmortimer"
 version = "1.0.0"
 
 dependencies {
+    implementation(project(":qrgen-core"))
     implementation(project(":qrgen-dsl"))
+    implementation(project(":qrgen-png"))
+    implementation(project(":qrgen-pdf"))
     implementation(kotlin("stdlib"))
     
     testImplementation(kotlin("test"))
@@ -16,12 +19,12 @@ dependencies {
 
 java {
     toolchain {
-        languageVersion.set(JavaLanguageVersion.of(21))
+        languageVersion.set(JavaLanguageVersion.of(17))
     }
 }
 
 application {
-    mainClass.set("io.github.willmortimer.cli.QrGenCliKt")
+    mainClass.set("io.github.qrgen.cli.QrGenCliKt")
 }
 
 tasks.test {

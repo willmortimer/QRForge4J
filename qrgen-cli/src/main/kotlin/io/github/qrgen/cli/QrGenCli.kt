@@ -1,17 +1,35 @@
 package io.github.qrgen.cli
 
-import io.github.qrgen.core.*
-import io.github.qrgen.dsl.*
-import io.nayuki.qrcodegen.QrCode.Ecc
+import io.github.qrgen.core.DefaultQrGenerator
+import io.github.qrgen.core.QrConfigIO
+import io.github.qrgen.core.QrGenerateRequest
+import io.github.qrgen.core.QrProfileRegistry
+import io.github.qrgen.core.QrRequestMapper
+import io.github.qrgen.core.QrStyleConfig
+import io.github.qrgen.dsl.QRCode
+import io.github.qrgen.pdf.QrPdfRenderer
+import io.github.qrgen.png.BatikPngRenderer
+import io.github.qrgen.svg.DefaultSvgRenderer
 import java.io.File
 import kotlin.system.exitProcess
 
 fun main(args: Array<String>) {
     try {
         val config = parseArgs(args)
-        val data = readInput(config.inputFile, config.encoding)
-        val svg = generateQr(data, config)
-        writeOutput(svg, config.outputFile)
+        val bytes = readInput(config.inputFile, config.encoding)
+        val request = config.toRequest(String(bytes, Charsets.UTF_8))
+        val profileRegistry = QrProfileRegistry()
+        config.profileFile?.let {
+            val document = QrConfigIO.readTemplate(File(it))
+            profileRegistry.register(File(it).nameWithoutExtension, document.config)
+        }
+        val qrConfig = if (config.templateFile != null) {
+            profileRegistry.merge(QrConfigIO.readTemplate(File(config.templateFile)))
+        } else {
+            QrRequestMapper.toConfig(request, profileRegistry)
+        }
+        val output = generateQr(request.data, qrConfig, config.format)
+        writeOutput(output, config.outputFile)
     } catch (e: Exception) {
         System.err.println("Error: ${e.message}")
         exitProcess(1)
@@ -28,46 +46,55 @@ private data class CliConfig(
     val dots: String = "circle",
     val fg: String = "#000000",
     val bg: String? = "#ffffff",
-    val ec: String = "q",
-    val logo: String? = null,
-    val logoSize: Double = 0.2,
+    val format: String = "svg",
     val cornerStyle: String? = null,
     val cornerColor: String = "#000000",
-    // Advanced styling
-    val moduleOutline: Boolean = false,
-    val moduleOutlineColor: String = "#111111",
-    val moduleOutlineWidth: Double = 0.5,
-    val quietZone: Boolean = false,
-    val quietZoneColor: String = "#444444",
-    val quietZoneWidth: Double = 1.0,
-    val quietZoneDash: String = "4 4",
-    val dropShadow: Boolean = false,
-    val shadowBlur: Double = 1.0,
-    val shadowOpacity: Double = 0.2,
-    val shadowX: Double = 0.0,
-    val shadowY: Double = 0.0,
-    val bgPattern: String? = null,
-    val bgPatternColor: String = "#f0f0f0",
-    val bgPatternOpacity: Double = 0.02,
-    val bgPatternSize: Double = 4.0,
-    val gradientMask: String? = null,
-    val gradientCenter: String? = null,
-    val gradientEdge: String? = null,
-    val microText: String? = null,
-    val microTextSize: Double = 8.0,
-    val microTextColor: String = "#666666",
-    val microTextPath: String = "circular"
-)
+    val cornerLogo: String? = null,
+    val alignmentShape: String? = null,
+    val alignmentColor: String? = null,
+    val alignmentSizeRatio: Double = 0.9,
+    val animationPreset: String? = null,
+    val animationDuration: Double = 1.5,
+    val roundSize: Boolean = false,
+    val moduleScale: Double = 0.92,
+    val backgroundCornerRadius: Double = 0.0,
+    val templateFile: String? = null,
+    val profileFile: String? = null
+) {
+    fun toRequest(data: String): QrGenerateRequest {
+        return QrGenerateRequest(
+            data = data,
+            format = format.uppercase(),
+            width = width,
+            height = height,
+            margin = margin,
+            foregroundColor = fg,
+            backgroundColor = bg,
+            backgroundCornerRadius = backgroundCornerRadius,
+            moduleType = dots.uppercase().replace('-', '_'),
+            roundSize = roundSize,
+            moduleScale = moduleScale,
+            cornerStyle = cornerStyle,
+            cornerColor = cornerColor,
+            cornerLogo = cornerLogo,
+            alignmentPatternShape = alignmentShape,
+            alignmentPatternColor = alignmentColor,
+            alignmentPatternSizeRatio = alignmentSizeRatio,
+            animationPreset = animationPreset,
+            animationDurationSeconds = animationDuration
+        )
+    }
+}
 
 private fun parseArgs(args: Array<String>): CliConfig {
     var config = CliConfig()
     var i = 0
-    
+
     fun nxt(): String {
-        if (++i >= args.size) error("Missing argument after ${args[i-1]}")
+        if (++i >= args.size) error("Missing argument after ${args[i - 1]}")
         return args[i]
     }
-    
+
     while (i < args.size) {
         when (args[i]) {
             "-i", "--input" -> config = config.copy(inputFile = nxt())
@@ -75,46 +102,25 @@ private fun parseArgs(args: Array<String>): CliConfig {
             "--enc" -> config = config.copy(encoding = nxt())
             "--width" -> config = config.copy(width = nxt().toInt())
             "--height" -> config = config.copy(height = nxt().toInt())
-            "--size" -> {
-                val size = nxt().toInt()
-                config = config.copy(width = size, height = size)
-            }
+            "--size" -> nxt().toInt().also { config = config.copy(width = it, height = it) }
             "--margin" -> config = config.copy(margin = nxt().toInt())
             "--dots" -> config = config.copy(dots = nxt())
             "--fg" -> config = config.copy(fg = nxt())
-            "--bg" -> {
-                val bg = nxt()
-                config = config.copy(bg = if (bg == "null") null else bg)
-            }
-            "--ec" -> config = config.copy(ec = nxt())
-            "--logo" -> config = config.copy(logo = nxt())
-            "--logo-size" -> config = config.copy(logoSize = nxt().toDouble())
+            "--bg" -> config = config.copy(bg = nxt().let { if (it == "null") null else it })
+            "--format" -> config = config.copy(format = nxt())
             "--corner-style" -> config = config.copy(cornerStyle = nxt())
             "--corner-color" -> config = config.copy(cornerColor = nxt())
-            // Advanced features
-            "--module-outline" -> config = config.copy(moduleOutline = true)
-            "--outline-color" -> config = config.copy(moduleOutlineColor = nxt())
-            "--outline-width" -> config = config.copy(moduleOutlineWidth = nxt().toDouble())
-            "--quiet-zone" -> config = config.copy(quietZone = true)
-            "--quiet-color" -> config = config.copy(quietZoneColor = nxt())
-            "--quiet-width" -> config = config.copy(quietZoneWidth = nxt().toDouble())
-            "--quiet-dash" -> config = config.copy(quietZoneDash = nxt())
-            "--drop-shadow" -> config = config.copy(dropShadow = true)
-            "--shadow-blur" -> config = config.copy(shadowBlur = nxt().toDouble())
-            "--shadow-opacity" -> config = config.copy(shadowOpacity = nxt().toDouble())
-            "--shadow-x" -> config = config.copy(shadowX = nxt().toDouble())
-            "--shadow-y" -> config = config.copy(shadowY = nxt().toDouble())
-            "--bg-pattern" -> config = config.copy(bgPattern = nxt())
-            "--pattern-color" -> config = config.copy(bgPatternColor = nxt())
-            "--pattern-opacity" -> config = config.copy(bgPatternOpacity = nxt().toDouble())
-            "--pattern-size" -> config = config.copy(bgPatternSize = nxt().toDouble())
-            "--gradient-mask" -> config = config.copy(gradientMask = nxt())
-            "--gradient-center" -> config = config.copy(gradientCenter = nxt())
-            "--gradient-edge" -> config = config.copy(gradientEdge = nxt())
-            "--micro-text" -> config = config.copy(microText = nxt())
-            "--micro-size" -> config = config.copy(microTextSize = nxt().toDouble())
-            "--micro-color" -> config = config.copy(microTextColor = nxt())
-            "--micro-path" -> config = config.copy(microTextPath = nxt())
+            "--corner-logo" -> config = config.copy(cornerLogo = nxt())
+            "--alignment-shape" -> config = config.copy(alignmentShape = nxt())
+            "--alignment-color" -> config = config.copy(alignmentColor = nxt())
+            "--alignment-size" -> config = config.copy(alignmentSizeRatio = nxt().toDouble())
+            "--animation" -> config = config.copy(animationPreset = nxt())
+            "--animation-duration" -> config = config.copy(animationDuration = nxt().toDouble())
+            "--round-size" -> config = config.copy(roundSize = true)
+            "--module-scale" -> config = config.copy(moduleScale = nxt().toDouble())
+            "--background-corners" -> config = config.copy(backgroundCornerRadius = nxt().toDouble())
+            "--template" -> config = config.copy(templateFile = nxt())
+            "--profile" -> config = config.copy(profileFile = nxt())
             "-h", "--help" -> {
                 printHelp()
                 exitProcess(0)
@@ -123,221 +129,67 @@ private fun parseArgs(args: Array<String>): CliConfig {
         }
         i++
     }
-    
     return config
 }
 
 private fun readInput(inputFile: String?, encoding: String): ByteArray {
-    val text = if (inputFile != null) {
-        File(inputFile).readText()
-    } else {
-        generateSequence(::readLine).joinToString("\n")
-    }
-    
+    val text = if (inputFile != null) File(inputFile).readText() else generateSequence(::readLine).joinToString("\n")
     return when (encoding.lowercase()) {
-        "latin1" -> QrEncoding.fromLatin1(text)
-        "base64" -> QrEncoding.fromBase64(text)
-        "utf8" -> QrEncoding.fromUtf8(text)
-        else -> error("Unknown encoding: $encoding")
+        "latin1" -> text.toByteArray(Charsets.ISO_8859_1)
+        "base64" -> java.util.Base64.getDecoder().decode(text.trim())
+        else -> text.toByteArray(Charsets.UTF_8)
     }
 }
 
-private fun generateQr(data: ByteArray, config: CliConfig): String {
-    val qrBuilder = QRCode.custom()
-        .size(config.width)
-        .height(config.height)
-        .margin(config.margin)
-        .withColor(config.fg)
-        .withBackground(config.bg)
-        .errorCorrection(parseErrorCorrection(config.ec))
-    
-    // Dot style
-    qrBuilder.dotStyle {
-        type = when (config.dots.lowercase()) {
-            "square" -> DotType.SQUARE
-            "classy" -> DotType.CLASSY
-            "rounded" -> DotType.ROUNDED
-            "extra-rounded" -> DotType.EXTRA_ROUNDED
-            "classy-rounded" -> DotType.CLASSY_ROUNDED
-            else -> DotType.CIRCLE
-        }
-    }
-    
-    // Logo
-    config.logo?.let { logoUrl ->
-        qrBuilder.centerImage(logoUrl, config.logoSize)
-    }
-    
-    // Corner locators
-    config.cornerStyle?.let { style ->
-        qrBuilder.cornerLocator {
-            color = config.cornerColor
-            when (style.lowercase()) {
-                "square" -> square()
-                "circle" -> circle()
-                "rounded" -> rounded()
-                "classy" -> classy()
-            }
-        }
-    }
-    
-    // Advanced effects
-    if (config.moduleOutline) {
-        qrBuilder.moduleOutline(config.moduleOutlineColor, config.moduleOutlineWidth)
-    }
-    
-    if (config.quietZone) {
-        qrBuilder.quietZoneAccent(config.quietZoneColor, config.quietZoneWidth, config.quietZoneDash)
-    }
-    
-    if (config.dropShadow) {
-        qrBuilder.dropShadow(config.shadowBlur, config.shadowOpacity, config.shadowX, config.shadowY)
-    }
-    
-    config.bgPattern?.let { pattern ->
-        qrBuilder.backgroundPattern {
-            when (pattern.lowercase()) {
-                "dots" -> dots()
-                "grid" -> grid()
-                "diagonal" -> diagonal()
-                "hexagon" -> hexagon()
-            }
-            color = config.bgPatternColor
-            opacity = config.bgPatternOpacity
-            size = config.bgPatternSize
-        }
-    }
-    
-    config.gradientMask?.let { mask ->
-        qrBuilder.gradientMasking {
-            when (mask.lowercase()) {
-                "concentric" -> {
-                    if (config.gradientCenter != null && config.gradientEdge != null) {
-                        concentric(config.gradientCenter, config.gradientEdge)
-                    }
-                }
-                "radial" -> {
-                    if (config.gradientCenter != null && config.gradientEdge != null) {
-                        radial(config.gradientCenter, config.gradientEdge)
-                    }
-                }
-                "linear" -> {
-                    if (config.gradientCenter != null && config.gradientEdge != null) {
-                        linear(config.gradientCenter, config.gradientEdge)
-                    }
-                }
-            }
-        }
-    }
-    
-    config.microText?.let { text ->
-        qrBuilder.microTypography(text) {
-            fontSize = config.microTextSize
-            color = config.microTextColor
-            when (config.microTextPath.lowercase()) {
-                "circular" -> circular()
-                "top" -> top()
-                "bottom" -> bottom()
-            }
-        }
-    }
-    
-    return qrBuilder.buildSvgFromBytes(data)
-}
-
-private fun parseErrorCorrection(ec: String): Ecc {
-    return when (ec.lowercase()) {
-        "l" -> Ecc.LOW
-        "m" -> Ecc.MEDIUM
-        "q" -> Ecc.QUARTILE
-        "h" -> Ecc.HIGH
-        else -> Ecc.QUARTILE
+private fun generateQr(data: String, config: QrStyleConfig, format: String): ByteArray {
+    val generator = DefaultQrGenerator()
+    val qrResult = generator.generateFromText(data, config)
+    return when (format.lowercase()) {
+        "png" -> BatikPngRenderer().render(qrResult)
+        "jpeg", "jpg" -> BatikPngRenderer().renderJpeg(qrResult)
+        "pdf" -> QrPdfRenderer().render(qrResult)
+        else -> DefaultSvgRenderer().render(qrResult).toByteArray()
     }
 }
 
-private fun writeOutput(svg: String, outputFile: String?) {
+private fun writeOutput(bytes: ByteArray, outputFile: String?) {
     if (outputFile != null) {
-        File(outputFile).writeText(svg)
+        File(outputFile).writeBytes(bytes)
     } else {
-        print(svg)
+        print(bytes.toString(Charsets.UTF_8))
     }
 }
 
 private fun printHelp() {
-    println("""
-QRGen CLI - Advanced QR Code Generator
+    println(
+        """
+QRGen CLI
 
 Usage:
   echo "text" | qrgen-cli [options]
-  qrgen-cli --input data.txt [options]
 
-Basic Options:
-  -i, --input <file>       Input file (default: stdin)
-  -o, --output <file>      Output SVG file (default: stdout)
-  --enc <utf8|latin1|base64> Encoding of input (default: utf8)
-  --width <px>             SVG canvas width (default: 512)
-  --height <px>            SVG canvas height (default: 512)
-  --size <px>              Set both width and height
-  --margin <px>            Margin around QR (default: 16)
-  --dots <style>           Dot style: circle|square|classy|rounded|extra-rounded|classy-rounded
-  --fg <color>             Foreground color (default: #000000)
-  --bg <color|null>        Background color (default: #ffffff)
-  --ec <l|m|q|h>           Error correction level (default: q)
+Core:
+  --format <svg|png|jpeg|pdf>
+  --dots <circle|square|classy|rounded|extra-rounded|classy-rounded>
+  --round-size
+  --module-scale <0.6-1.0>
+  --background-corners <px>
 
-Logo & Corners:
-  --logo <url>             URL or data-URI for center image
-  --logo-size <0.0-1.0>    Center image size ratio (default: 0.2)
-  --corner-style <style>   Corner locator: square|circle|rounded|classy
-  --corner-color <color>   Locator color (default: #000000)
+Locator and Alignment:
+  --corner-style <square|circle|rounded|classy>
+  --corner-color <color>
+  --corner-logo <url>
+  --alignment-shape <square|circle|diamond|star>
+  --alignment-color <color>
+  --alignment-size <ratio>
 
-Advanced Effects:
-  --module-outline         Add subtle outline to modules
-  --outline-color <color>  Module outline color (default: #111111)
-  --outline-width <px>     Module outline width (default: 0.5)
-  --quiet-zone             Add accent border around quiet zone
-  --quiet-color <color>    Quiet zone border color (default: #444444)
-  --quiet-width <px>       Quiet zone border width (default: 1.0)
-  --quiet-dash <pattern>   Dash pattern for quiet zone (default: "4 4")
-  --drop-shadow            Add subtle drop shadow effect
-  --shadow-blur <px>       Shadow blur radius (default: 1.0)
-  --shadow-opacity <0-1>   Shadow opacity (default: 0.2)
-  --shadow-x <px>          Shadow X offset (default: 0.0)
-  --shadow-y <px>          Shadow Y offset (default: 0.0)
+Templates:
+  --template <file.(json|yaml|yml)>
+  --profile <file.(json|yaml|yml)>
 
-Background Patterns:
-  --bg-pattern <type>      Background pattern: dots|grid|diagonal|hexagon
-  --pattern-color <color>  Pattern color (default: #f0f0f0)
-  --pattern-opacity <0-1>  Pattern opacity (default: 0.02)
-  --pattern-size <px>      Pattern size (default: 4.0)
-
-Gradient Effects:
-  --gradient-mask <type>   Gradient masking: concentric|radial|linear
-  --gradient-center <color> Center color for gradient masking
-  --gradient-edge <color>  Edge color for gradient masking
-
-Typography:
-  --micro-text <text>      Micro text around border
-  --micro-size <px>        Micro text font size (default: 8.0)
-  --micro-color <color>    Micro text color (default: #666666)
-  --micro-path <path>      Text path: circular|top|bottom (default: circular)
-
-  -h, --help               Show this help
-
-Examples:
-  # Basic QR code
-  echo "Hello World" | qrgen-cli --enc utf8
-
-  # Styled QR with advanced features
-  echo "Advanced QR" | qrgen-cli --enc utf8 \\
-    --dots extra-rounded --fg "#2ecc71" \\
-    --drop-shadow --quiet-zone \\
-    --micro-text "Secure • Verified"
-
-  # QR with background pattern and gradient masking
-  echo "Pattern QR" | qrgen-cli --enc utf8 \\
-    --bg-pattern dots --gradient-mask concentric \\
-    --gradient-center "#000" --gradient-edge "#666"
-
-For library usage, see the Kotlin DSL documentation.
-""".trimIndent())
-} 
+Animation:
+  --animation <fade|pulse|draw-in>
+  --animation-duration <seconds>
+        """.trimIndent()
+    )
+}
