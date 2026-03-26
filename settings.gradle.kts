@@ -17,10 +17,11 @@ rootProject.name = "qrforge4j"
 include("qrgen-core")
 include("qrgen-svg") 
 include("qrgen-png")
+include("qrgen-pdf")
 include("qrgen-dsl")
 include("qrgen-test")
 include("qrgen-cli")
+include("qrgen-ktor")
 include("qrgen-spring-boot-starter")
 include("qrgen-batch")
-// include("qrgen-gradle-plugin")  // TODO: Fix Kotlin version compatibility  
-// include("qrgen-micronaut")     // TODO: Fix API compatibility issues
+include("qrgen-micronaut")
