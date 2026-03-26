@@ -1,106 +1,55 @@
 package io.github.qrgen.micronaut
 
-import io.github.qrgen.core.*
+import io.github.qrgen.core.QrGenerateRequest
+import io.micronaut.core.annotation.Introspected
 import io.micronaut.http.HttpResponse
 import io.micronaut.http.MediaType
 import io.micronaut.http.annotation.*
-import io.micronaut.core.annotation.Introspected
-import kotlinx.coroutines.runBlocking
 
-/**
- * Micronaut REST controller for QR code generation
- */
 @Controller("/qr")
 class QrController(private val qrGenService: QrGenService) {
-    
-    /**
-     * Generate QR code with query parameters
-     */
+
     @Get("/generate")
     fun generateQr(
         @QueryValue data: String,
         @QueryValue(defaultValue = "SVG") format: String,
         @QueryValue(defaultValue = "512") width: Int,
         @QueryValue(defaultValue = "512") height: Int,
-        @QueryValue(required = false) foregroundColor: String? = null,
-        @QueryValue(required = false) backgroundColor: String? = null
+        @QueryValue foregroundColor: String? = null,
+        @QueryValue backgroundColor: String? = null,
+        @QueryValue cornerStyle: String? = null,
+        @QueryValue cornerLogo: String? = null,
+        @QueryValue alignmentPatternShape: String? = null,
+        @QueryValue animationPreset: String? = null
     ): HttpResponse<ByteArray> {
-        val response = qrGenService.generateSimple(
+        val request = QrGenerateRequest(
             data = data,
+            format = format,
             width = width,
             height = height,
             foregroundColor = foregroundColor ?: "#000000",
             backgroundColor = backgroundColor ?: "#ffffff",
-            format = QrFormat.valueOf(format.uppercase())
+            cornerStyle = cornerStyle,
+            cornerLogo = cornerLogo,
+            alignmentPatternShape = alignmentPatternShape,
+            animationPreset = animationPreset
         )
-        
-        return HttpResponse.ok(response.data)
-            .contentType(MediaType.of(response.contentType))
-            .header("Content-Disposition", "inline; filename=\"${response.filename}\"")
+        return response(qrGenService.generateQr(request))
     }
-    
-    /**
-     * Generate QR code with POST request
-     */
+
     @Post("/generate")
     @Consumes(MediaType.APPLICATION_JSON)
-    fun generateQrPost(@Body request: QrRequest): HttpResponse<ByteArray> {
-        val config = QrStyleConfig(
-            layout = LayoutOptions(
-                width = request.width,
-                height = request.height,
-                margin = request.margin
-            ),
-            colors = ColorOptions(
-                foreground = request.foregroundColor,
-                background = request.backgroundColor
-            ),
-            modules = ModuleOptions(
-                type = DotType.valueOf(request.moduleType.uppercase())
-            )
-        )
-        
-        val response = qrGenService.generateQr(
-            request.data,
-            config,
-            QrFormat.valueOf(request.format.uppercase())
-        )
-        
-        return HttpResponse.ok(response.data)
-            .contentType(MediaType.of(response.contentType))
-            .header("Content-Disposition", "inline; filename=\"${response.filename}\"")
+    fun generateQrPost(@Body request: QrGenerateRequest): HttpResponse<ByteArray> {
+        return response(qrGenService.generateQr(request))
     }
-    
-    /**
-     * Batch generate QR codes
-     */
+
     @Post("/batch")
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
-    fun generateBatch(@Body request: BatchRequest): HttpResponse<BatchQrResponse> = runBlocking {
-        val config = QrStyleConfig(
-            layout = LayoutOptions(
-                width = request.width,
-                height = request.height
-            ),
-            colors = ColorOptions(
-                foreground = request.foregroundColor,
-                background = request.backgroundColor
-            )
-        )
-        
-        val response = qrGenService.generateBatch(
-            request.dataList,
-            config,
-            QrFormat.valueOf(request.format.uppercase())
-        )
-        
-        HttpResponse.ok(response)
+    suspend fun generateBatch(@Body request: BatchRequest): HttpResponse<BatchQrResponse> {
+        return HttpResponse.ok(qrGenService.generateBatch(request.dataList, request.config))
     }
-    
-    /**
-     * Health check endpoint
-     */
+
     @Get("/health")
     @Produces(MediaType.APPLICATION_JSON)
     fun health(): HttpResponse<Map<String, Any>> {
@@ -108,37 +57,21 @@ class QrController(private val qrGenService: QrGenService) {
             mapOf(
                 "status" to "UP",
                 "service" to "QRGen",
-                "version" to "1.0.0",
-                "framework" to "Micronaut"
+                "framework" to "Micronaut",
+                "formats" to QrFormat.entries.map { it.name }
             )
         )
     }
+
+    private fun response(response: QrGenResponse): HttpResponse<ByteArray> {
+        return HttpResponse.ok(response.data)
+            .contentType(MediaType.of(response.contentType))
+            .header("Content-Disposition", "inline; filename=\"${response.filename}\"")
+    }
 }
 
-/**
- * Request model for QR generation
- */
-@Introspected
-data class QrRequest(
-    val data: String,
-    val format: String = "SVG",
-    val width: Int = 512,
-    val height: Int = 512,
-    val margin: Int = 16,
-    val foregroundColor: String = "#000000",
-    val backgroundColor: String = "#ffffff",
-    val moduleType: String = "CIRCLE"
-)
-
-/**
- * Request model for batch QR generation
- */
 @Introspected
 data class BatchRequest(
     val dataList: List<String>,
-    val format: String = "SVG",
-    val width: Int = 512,
-    val height: Int = 512,
-    val foregroundColor: String = "#000000",
-    val backgroundColor: String = "#ffffff"
-) 
+    val config: QrGenerateRequest = QrGenerateRequest(data = "")
+)

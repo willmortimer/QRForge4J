@@ -1,6 +1,7 @@
 plugins {
     kotlin("jvm")
     kotlin("kapt")
+    id("org.jetbrains.dokka")
     id("maven-publish")
 }
 
@@ -8,34 +9,48 @@ group = "io.github.willmortimer"
 version = "1.0.0"
 
 dependencies {
-    implementation(project(":qrgen-core"))
-    implementation(project(":qrgen-svg"))
-    implementation(project(":qrgen-png"))
-    implementation(project(":qrgen-batch"))
+    api(project(":qrgen-core"))
+    api(project(":qrgen-svg"))
+    api(project(":qrgen-png"))
+    api(project(":qrgen-pdf"))
+    api(project(":qrgen-batch"))
     
     // Micronaut dependencies
-    implementation("io.micronaut:micronaut-inject:3.10.3")
-    implementation("io.micronaut:micronaut-http:3.10.3")
-    implementation("io.micronaut:micronaut-http-server-netty:3.10.3")
-    implementation("io.micronaut:micronaut-runtime:3.10.3")
+    val micronautVersion = "3.10.3"
+    implementation("io.micronaut:micronaut-inject:$micronautVersion")
+    implementation("io.micronaut:micronaut-http:$micronautVersion")
+    implementation("io.micronaut:micronaut-http-server-netty:$micronautVersion")
+    implementation("io.micronaut:micronaut-runtime:$micronautVersion")
     
     // Configuration
-    implementation("io.micronaut:micronaut-context:3.10.3")
+    implementation("io.micronaut:micronaut-context:$micronautVersion")
     
     // JSON support
-    implementation("io.micronaut:micronaut-jackson-databind:3.10.3")
+    implementation("io.micronaut:micronaut-jackson-databind:$micronautVersion")
     
     // Coroutines support
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.3")
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-reactive:1.7.3")
     
     // Annotation processing
-    kapt("io.micronaut:micronaut-inject-java:3.10.3")
+    kapt("io.micronaut:micronaut-inject-java:$micronautVersion")
     
     // Testing
-    testImplementation("io.micronaut.test:micronaut-test-junit5:4.1.0")
     testImplementation("org.junit.jupiter:junit-jupiter:5.10.0")
     testImplementation("org.jetbrains.kotlin:kotlin-test")
+}
+
+java {
+    toolchain {
+        languageVersion.set(JavaLanguageVersion.of(17))
+    }
+    withSourcesJar()
+    withJavadocJar()
+}
+
+kotlin {
+    compilerOptions {
+        jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
+    }
 }
 
 tasks.test {
@@ -70,10 +85,10 @@ publishing {
                 
                 scm {
                     connection.set("scm:git:git://github.com/willmortimer/QRForge4J.git")
-                    developerConnection.set("scm:git:ssh://github.com:qrgen-kotlin/qrgen.git")
+                    developerConnection.set("scm:git:ssh://github.com/willmortimer/QRForge4J.git")
                     url.set("https://github.com/willmortimer/QRForge4J/tree/main")
                 }
             }
         }
     }
-} 
+}

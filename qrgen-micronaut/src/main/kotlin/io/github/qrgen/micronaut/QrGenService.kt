@@ -1,72 +1,73 @@
 package io.github.qrgen.micronaut
 
+import io.github.qrgen.batch.BatchConfig
+import io.github.qrgen.batch.OutputFormat
+import io.github.qrgen.batch.QrBatchProcessor
 import io.github.qrgen.core.*
-import io.github.qrgen.svg.SvgRenderer
-import io.github.qrgen.png.PngRenderer
-import io.github.qrgen.batch.BatchProcessor
+import io.github.qrgen.pdf.QrPdfRenderer
+import io.github.qrgen.png.BatikPngRenderer
+import io.github.qrgen.svg.DefaultSvgRenderer
 import jakarta.inject.Singleton
-import kotlinx.coroutines.runBlocking
 
-/**
- * Micronaut service for QR code generation
- */
 @Singleton
 class QrGenService {
-    
-    private val svgRenderer = SvgRenderer()
-    private val pngRenderer = PngRenderer()
-    private val batchProcessor = BatchProcessor()
-    
-    /**
-     * Generate a QR code with the specified configuration
-     */
+    private val generator = DefaultQrGenerator()
+    private val svgRenderer = DefaultSvgRenderer()
+    private val pngRenderer = BatikPngRenderer()
+    private val pdfRenderer = QrPdfRenderer()
+    private val cache = QrRenderCache(CacheOptions(enabled = true, maxEntries = 256))
+
     fun generateQr(
-        data: String, 
-        config: QrStyleConfig = QrStyleConfig(), 
-        format: QrFormat = QrFormat.SVG
-    ): QrGenResponse {
-        return when (format) {
-            QrFormat.SVG -> {
-                val svg = svgRenderer.render(data, config)
-                QrGenResponse(
-                    data = svg.toByteArray(),
-                    contentType = "image/svg+xml",
-                    filename = "qr.svg",
-                    size = svg.length
-                )
-            }
-            QrFormat.PNG -> {
-                val png = pngRenderer.render(data, config)
-                QrGenResponse(
-                    data = png,
-                    contentType = "image/png",
-                    filename = "qr.png",
-                    size = png.size
-                )
-            }
-        }
-    }
-    
-    /**
-     * Generate multiple QR codes in batch
-     */
-    suspend fun generateBatch(
-        dataList: List<String>,
+        data: String,
         config: QrStyleConfig = QrStyleConfig(),
         format: QrFormat = QrFormat.SVG
+    ): QrGenResponse {
+        val bytes = cache.getOrPut(qrCacheKey(data, config, format.name)) {
+            val qrResult = generator.generateFromText(data, config)
+            when (format) {
+                QrFormat.SVG -> svgRenderer.render(qrResult).toByteArray()
+                QrFormat.PNG -> pngRenderer.render(qrResult)
+                QrFormat.JPEG -> pngRenderer.renderJpeg(qrResult)
+                QrFormat.PDF -> pdfRenderer.render(qrResult)
+            }
+        }
+
+        return when (format) {
+            QrFormat.SVG -> QrGenResponse(bytes, "image/svg+xml", "qr.svg", bytes.size)
+            QrFormat.PNG -> QrGenResponse(bytes, "image/png", "qr.png", bytes.size)
+            QrFormat.JPEG -> QrGenResponse(bytes, "image/jpeg", "qr.jpg", bytes.size)
+            QrFormat.PDF -> QrGenResponse(bytes, "application/pdf", "qr.pdf", bytes.size)
+        }
+    }
+
+    fun generateQr(request: QrGenerateRequest): QrGenResponse {
+        return generateQr(request.data, QrRequestMapper.toConfig(request), QrFormat.valueOf(request.format.uppercase()))
+    }
+
+    suspend fun generateBatch(
+        dataList: List<String>,
+        config: QrGenerateRequest
     ): BatchQrResponse {
-        val responses = batchProcessor.processBatch(dataList, config, format)
+        val format = QrFormat.valueOf(config.format.uppercase())
+        val processor = QrBatchProcessor(
+            BatchConfig(
+                outputFormat = when (format) {
+                    QrFormat.SVG -> OutputFormat.SVG
+                    QrFormat.PNG -> OutputFormat.PNG
+                    QrFormat.JPEG -> OutputFormat.JPEG
+                    QrFormat.PDF -> OutputFormat.PDF
+                }
+            )
+        )
+        val result = processor.processBatch(dataList, QrRequestMapper.toConfig(config))
         return BatchQrResponse(
-            results = responses,
             totalCount = dataList.size,
-            successCount = responses.size,
+            successCount = result.successful,
+            failureCount = result.failed,
             format = format.name
         )
     }
-    
-    /**
-     * Generate QR code with simple parameters
-     */
+
     fun generateSimple(
         data: String,
         width: Int = 512,
@@ -75,20 +76,18 @@ class QrGenService {
         backgroundColor: String = "#ffffff",
         format: QrFormat = QrFormat.SVG
     ): QrGenResponse {
-        val config = QrStyleConfig(
-            layout = LayoutOptions(width = width, height = height),
-            colors = ColorOptions(
-                foreground = foregroundColor,
-                background = backgroundColor
-            )
+        val request = QrGenerateRequest(
+            data = data,
+            width = width,
+            height = height,
+            foregroundColor = foregroundColor,
+            backgroundColor = backgroundColor,
+            format = format.name
         )
-        return generateQr(data, config, format)
+        return generateQr(request)
     }
 }
 
-/**
- * Response model for QR generation
- */
 data class QrGenResponse(
     val data: ByteArray,
     val contentType: String,
@@ -96,12 +95,11 @@ data class QrGenResponse(
     val size: Int
 )
 
-/**
- * Response model for batch QR generation
- */
 data class BatchQrResponse(
-    val results: List<QrGenResponse>,
     val totalCount: Int,
     val successCount: Int,
+    val failureCount: Int,
     val format: String
-) 
+)
+
+enum class QrFormat { SVG, PNG, JPEG, PDF }
