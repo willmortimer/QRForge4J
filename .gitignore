@@ -56,6 +56,8 @@ Desktop.ini
 *.gif
 test-*
 sample-*
+!qrgen-test/src/test/resources/goldens/
+!qrgen-test/src/test/resources/goldens/**
 
 # Local configuration
 local.properties

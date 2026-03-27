@@ -19,6 +19,26 @@ val githubPackagesUrl = "https://maven.pkg.github.com/willmortimer/QRForge4J"
 val sonatypeStagingApiBase = "https://ossrh-staging-api.central.sonatype.com"
 val sonatypeStagingDeployUrl = "$sonatypeStagingApiBase/service/local/staging/deploy/maven2/"
 
+fun deriveReleaseVersion(): String {
+    val explicit = System.getenv("RELEASE_VERSION")
+        ?: (findProperty("releaseVersion") as String?)
+    if (!explicit.isNullOrBlank()) return explicit.removePrefix("v")
+
+    val githubRef = System.getenv("GITHUB_REF_NAME")
+    if (!githubRef.isNullOrBlank() && githubRef.startsWith("v")) {
+        return githubRef.removePrefix("v")
+    }
+
+    return runCatching {
+        val process = ProcessBuilder("git", "describe", "--tags", "--exact-match")
+            .directory(rootDir)
+            .redirectErrorStream(true)
+            .start()
+        val output = process.inputStream.bufferedReader().use { it.readText().trim() }
+        if (process.waitFor() == 0 && output.isNotBlank()) output.removePrefix("v") else "1.0.0-SNAPSHOT"
+    }.getOrDefault("1.0.0-SNAPSHOT")
+}
+
 val centralNamespace = providers.environmentVariable("CENTRAL_NAMESPACE")
     .orElse(providers.gradleProperty("central.namespace"))
     .orElse("io.github.willmortimer")
@@ -30,6 +50,10 @@ val signingKey = providers.environmentVariable("SIGNING_KEY")
     .orElse(providers.gradleProperty("signingInMemoryKey"))
 val signingPassword = providers.environmentVariable("SIGNING_PASSWORD")
     .orElse(providers.gradleProperty("signingInMemoryKeyPassword"))
+val signingEnabled = providers.environmentVariable("ENABLE_SIGNING")
+    .orElse(providers.gradleProperty("enableSigning"))
+    .map { it.equals("true", ignoreCase = true) }
+    .orElse(false)
 val centralPublishingEnabled = providers.provider {
     centralUsername.isPresent && centralPassword.isPresent
 }
@@ -46,7 +70,7 @@ tasks.dokkaHtmlMultiModule.configure {
 
 allprojects {
     group = "io.github.willmortimer"
-    version = "1.0.0"
+    version = deriveReleaseVersion()
 
     repositories {
         mavenCentral()
@@ -97,7 +121,7 @@ subprojects {
         }
 
         extensions.configure<SigningExtension> {
-            if (signingKey.isPresent) {
+            if (signingEnabled.get() && signingKey.isPresent) {
                 useInMemoryPgpKeys(signingKey.get(), signingPassword.orNull)
             }
         }
@@ -132,7 +156,7 @@ subprojects {
                 }
             }
 
-            if (signingKey.isPresent) {
+            if (signingEnabled.get() && signingKey.isPresent) {
                 extensions.findByType(SigningExtension::class.java)?.sign(publishing.publications)
             }
         }

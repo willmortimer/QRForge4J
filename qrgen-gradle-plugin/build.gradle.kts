@@ -12,8 +12,28 @@ plugins {
     signing
 }
 
+fun deriveReleaseVersion(): String {
+    val explicit = System.getenv("RELEASE_VERSION")
+        ?: (findProperty("releaseVersion") as String?)
+    if (!explicit.isNullOrBlank()) return explicit.removePrefix("v")
+
+    val githubRef = System.getenv("GITHUB_REF_NAME")
+    if (!githubRef.isNullOrBlank() && githubRef.startsWith("v")) {
+        return githubRef.removePrefix("v")
+    }
+
+    return runCatching {
+        val process = ProcessBuilder("git", "describe", "--tags", "--exact-match")
+            .directory(rootDir)
+            .redirectErrorStream(true)
+            .start()
+        val output = process.inputStream.bufferedReader().use { it.readText().trim() }
+        if (process.waitFor() == 0 && output.isNotBlank()) output.removePrefix("v") else "1.0.0-SNAPSHOT"
+    }.getOrDefault("1.0.0-SNAPSHOT")
+}
+
 group = "io.github.willmortimer"
-version = "1.0.0"
+version = deriveReleaseVersion()
 
 val projectUrl = "https://github.com/willmortimer/QRForge4J"
 val githubPackagesUrl = "https://maven.pkg.github.com/willmortimer/QRForge4J"
@@ -30,6 +50,10 @@ val signingKey = providers.environmentVariable("SIGNING_KEY")
     .orElse(providers.gradleProperty("signingInMemoryKey"))
 val signingPassword = providers.environmentVariable("SIGNING_PASSWORD")
     .orElse(providers.gradleProperty("signingInMemoryKeyPassword"))
+val signingEnabled = providers.environmentVariable("ENABLE_SIGNING")
+    .orElse(providers.gradleProperty("enableSigning"))
+    .map { it.equals("true", ignoreCase = true) }
+    .orElse(false)
 
 repositories {
     mavenCentral()
@@ -37,9 +61,9 @@ repositories {
 }
 
 dependencies {
-    implementation("io.github.willmortimer:qrgen-core:1.0.0")
-    implementation("io.github.willmortimer:qrgen-svg:1.0.0")
-    implementation("io.github.willmortimer:qrgen-png:1.0.0")
+    implementation("io.github.willmortimer:qrgen-core:${version}")
+    implementation("io.github.willmortimer:qrgen-svg:${version}")
+    implementation("io.github.willmortimer:qrgen-png:${version}")
     
     implementation(gradleApi())
     implementation(localGroovy())
@@ -122,7 +146,7 @@ publishing {
 }
 
 signing {
-    if (signingKey.isPresent) {
+    if (signingEnabled.get() && signingKey.isPresent) {
         useInMemoryPgpKeys(signingKey.get(), signingPassword.orNull)
         sign(publishing.publications)
     }
