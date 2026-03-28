@@ -62,6 +62,7 @@ sample-*
 # Local configuration
 local.properties
 gradle.properties.local
+Justfile
 
 # Maven
 target/

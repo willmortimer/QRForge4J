@@ -1,6 +1,7 @@
 [tools]
 java = "temurin-17"
 gradle = "9.4.0"
+just = "latest"
 
 [env]
 GRADLE_OPTS = "-Dorg.gradle.java.installations.auto-download=false"
