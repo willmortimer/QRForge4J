@@ -1,6 +1,9 @@
+import org.gradle.api.plugins.JavaPluginExtension
 import org.gradle.api.publish.PublishingExtension
 import org.gradle.api.publish.maven.MavenPublication
 import org.gradle.plugins.signing.SigningExtension
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+import org.jetbrains.kotlin.gradle.dsl.KotlinJvmProjectExtension
 import java.net.URI
 import java.net.http.HttpClient
 import java.net.http.HttpRequest
@@ -18,6 +21,8 @@ val projectUrl = "https://github.com/willmortimer/QRForge4J"
 val githubPackagesUrl = "https://maven.pkg.github.com/willmortimer/QRForge4J"
 val sonatypeStagingApiBase = "https://ossrh-staging-api.central.sonatype.com"
 val sonatypeStagingDeployUrl = "$sonatypeStagingApiBase/service/local/staging/deploy/maven2/"
+val javaBaselineVersion = 17
+val javaLanguageVersion = JavaLanguageVersion.of(javaBaselineVersion)
 
 fun deriveReleaseVersion(): String {
     val explicit = System.getenv("RELEASE_VERSION")
@@ -80,10 +85,22 @@ allprojects {
 subprojects {
     plugins.apply("signing")
 
+    pluginManager.withPlugin("java") {
+        extensions.configure<JavaPluginExtension> {
+            toolchain {
+                languageVersion.set(javaLanguageVersion)
+            }
+        }
+    }
+
     pluginManager.withPlugin("org.jetbrains.kotlin.jvm") {
+        extensions.configure<KotlinJvmProjectExtension> {
+            jvmToolchain(javaBaselineVersion)
+        }
+
         tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {
             compilerOptions {
-                jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
+                jvmTarget.set(JvmTarget.JVM_17)
                 freeCompilerArgs.addAll(
                     "-Xjsr305=strict",
                     "-opt-in=kotlin.RequiresOptIn",

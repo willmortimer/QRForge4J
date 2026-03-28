@@ -17,12 +17,6 @@ dependencies {
     testImplementation("org.junit.jupiter:junit-jupiter:5.8.1")
 }
 
-java {
-    toolchain {
-        languageVersion.set(JavaLanguageVersion.of(17))
-    }
-}
-
 application {
     mainClass.set("io.github.qrgen.cli.QrGenCliKt")
 }

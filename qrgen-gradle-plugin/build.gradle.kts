@@ -3,6 +3,8 @@ import java.net.http.HttpClient
 import java.net.http.HttpRequest
 import java.net.http.HttpResponse
 import java.util.Base64
+import org.gradle.api.publish.maven.MavenPublication
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
     `kotlin-dsl`
@@ -76,6 +78,21 @@ tasks.test {
     useJUnitPlatform()
 }
 
+java {
+    toolchain {
+        languageVersion.set(JavaLanguageVersion.of(17))
+    }
+    withSourcesJar()
+    withJavadocJar()
+}
+
+kotlin {
+    jvmToolchain(17)
+    compilerOptions {
+        jvmTarget.set(JvmTarget.JVM_17)
+    }
+}
+
 gradlePlugin {
     plugins {
         create("qrgen") {
@@ -89,34 +106,30 @@ gradlePlugin {
 
 // Configure publishing
 publishing {
-    publications {
-        create<MavenPublication>("maven") {
-            from(components["java"])
-            
-            pom {
-                name.set("QRGen Gradle Plugin")
-                description.set("Gradle plugin for QR code generation")
-                url.set("https://github.com/willmortimer/QRForge4J")
-                
-                licenses {
-                    license {
-                        name.set("MIT License")
-                        url.set("https://opensource.org/licenses/MIT")
-                    }
+    publications.withType<MavenPublication>().configureEach {
+        pom {
+            name.set("QRGen Gradle Plugin")
+            description.set("Gradle plugin for QR code generation")
+            url.set(projectUrl)
+
+            licenses {
+                license {
+                    name.set("MIT License")
+                    url.set("https://opensource.org/licenses/MIT")
                 }
-                
-                developers {
-                    developer {
-                        id.set("willmortimer")
-                        name.set("Will Mortimer")
-                    }
+            }
+
+            developers {
+                developer {
+                    id.set("willmortimer")
+                    name.set("Will Mortimer")
                 }
-                
-                scm {
-                    connection.set("scm:git:git://github.com/willmortimer/QRForge4J.git")
-                    developerConnection.set("scm:git:ssh://github.com/willmortimer/QRForge4J.git")
-                    url.set("https://github.com/willmortimer/QRForge4J")
-                }
+            }
+
+            scm {
+                connection.set("scm:git:git://github.com/willmortimer/QRForge4J.git")
+                developerConnection.set("scm:git:ssh://github.com/willmortimer/QRForge4J.git")
+                url.set(projectUrl)
             }
         }
     }

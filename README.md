@@ -7,6 +7,7 @@ QRForge4J is a multi-module JVM QR generation library written in Kotlin. It ship
 - Main multi-module build: `./gradlew build`
 - Standalone Gradle plugin build: `./gradlew -p qrgen-gradle-plugin build`
 - Java baseline: 17
+- Source builds require a locally available JDK 17 toolchain
 - Gradle wrapper: 9.4.0
 - Main repo Kotlin plugin: 2.3.10
 
@@ -63,7 +64,7 @@ With the Gradle wrapper:
 ./gradlew -p qrgen-gradle-plugin build
 ```
 
-`mise` manages the toolchain. The Gradle wrapper still downloads its own pinned distribution the first time it runs; that is normal wrapper behavior.
+`mise` manages the toolchain. If you build with the Gradle wrapper directly, make sure JDK 17 is installed and discoverable locally. The repo does not auto-download JDK toolchains from `settings.gradle.kts`.
 
 ## Installation
 
