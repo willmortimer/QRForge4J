@@ -5,9 +5,6 @@ plugins {
     id("maven-publish")
 }
 
-group = "io.github.willmortimer"
-version = "1.0.0"
-
 dependencies {
     api(project(":qrgen-core"))
     api(project(":qrgen-svg"))

@@ -4,9 +4,6 @@ plugins {
     `maven-publish`
 }
 
-group = "io.github.willmortimer"
-version = "1.0.0"
-
 dependencies {
     api("io.nayuki:qrcodegen:1.8.0")
     api("com.fasterxml.jackson.module:jackson-module-kotlin:2.18.2")

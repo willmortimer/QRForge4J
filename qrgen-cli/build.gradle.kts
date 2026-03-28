@@ -3,9 +3,6 @@ plugins {
     application
 }
 
-group = "io.github.willmortimer"
-version = "1.0.0"
-
 dependencies {
     implementation(project(":qrgen-core"))
     implementation(project(":qrgen-dsl"))
